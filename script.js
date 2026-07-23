@@ -31,22 +31,37 @@ const IA_CONFIG = { easy: 2.5, medium: 4.5, hard: 7.5 };
 let velocidadIA = 4.5;
 
 
-//Bloque 2: Inicialización de Modos y Conexión de Red P2P (PeerJS)
-// INICIALIZACIÓN DE LA RED PEERJS
+// ==========================================
+// REEMPLAZO BLOQUE 2: INICIALIZACIÓN Y RED FIXED
+// ==========================================
+
+// Forzamos a PeerJS a inicializarse en cuanto carga la página para que el ID esté listo de inmediato
+window.onload = function() {
+    inicializarPeerJS();
+};
+
 function inicializarPeerJS() {
-    peer = new Peer();
+    // Inicializamos con el servidor gratuito global de PeerJS
+    peer = new Peer(undefined, { debug: 2 });
+    
     peer.on('open', id => {
         miPeerId = id;
         document.getElementById('mi-id').innerText = id;
+        console.log("Nodo de red listo. ID generado:", id);
     });
+    
     peer.on('connection', conn => {
         conexionOnline = conn;
         soyHost = true;
         configurarEventosConexion();
     });
+
+    peer.on('error', err => {
+        console.error("Error en el nodo de red:", err);
+        document.getElementById('estado-conexion').innerText = "Network Error. Retry node.";
+    });
 }
 
-// SELECCIÓN DE MODO DESDE LA INTERFAZ
 function seleccionarModo(modo) {
     modoActual = modo;
     velocidadIA = IA_CONFIG[document.getElementById('select-diff').value];
@@ -54,7 +69,6 @@ function seleccionarModo(modo) {
 
     if (modo === 'online') {
         document.getElementById('panel-online').classList.remove('oculto');
-        if (!peer) inicializarPeerJS();
     } else {
         if (modo === 'local') aliasEnemigo = 'PLAYER_2';
         if (modo === 'ia') aliasEnemigo = 'INFECTED_IA';
@@ -62,22 +76,22 @@ function seleccionarModo(modo) {
     }
 }
 
-// CONECTAR AL ID DEL ENEMIGO
 function conectarAEnemigo() {
     const idEnemigo = document.getElementById('input-peer-id').value.trim();
-    if (!idEnemigo) return;
+    if (!idEnemigo) {
+        alert("🚨 PLEASE ENTER A VALID ENEMY ID");
+        return;
+    }
     
-    document.getElementById('estado-conexion').innerText = "Syncing network nodes...";
+    document.getElementById('estado-conexion').innerText = "Connecting to remote node...";
     conexionOnline = peer.connect(idEnemigo);
     soyHost = false;
     configurarEventosConexion();
 }
 
-// CONFIGURAR ESCUCHADORES DE RED
 function configurarEventosConexion() {
     conexionOnline.on('open', () => {
         document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-        // Enviamos nuestro Alias personalizado al otro jugador
         conexionOnline.send({ tipo: 'handshake', alias: aliasPropio });
         setTimeout(() => {
             document.getElementById('caja-chat-online').classList.remove('oculto');
@@ -87,8 +101,10 @@ function configurarEventosConexion() {
     conexionOnline.on('data', data => procesarDatosRed(data));
 }
 
-//Bloque 3: Controladores del Menú y Flujo de la Partida
-// ARRANCAR EL ESCENARIO GRÁFICO
+// ==========================================
+// REEMPLAZO BLOQUE 3: FLUJO DE PARTIDA Y VOLVER AL MENÚ
+// ==========================================
+
 function arrancarEscenarioJuego() {
     document.getElementById('menu-inicio').classList.add('oculto');
     document.getElementById('escenario-juego').classList.remove('oculto');
@@ -101,14 +117,19 @@ function arrancarEscenarioJuego() {
     } else {
         document.getElementById('label-p1').innerText = aliasPropio;
         document.getElementById('label-p2').innerText = aliasEnemigo;
+        document.getElementById('btn-start-match').disabled = false;
+        document.getElementById('btn-start-match').innerText = "🎮 START MATCH";
     }
     
-    resetPelota(false); // Coloca la pelota congelada en el centro
-    dibujar(); // Fuerza el primer render para visualizar las paletas antes de iniciar
-    requestAnimationFrame(buclePrincipalJuego);
+    resetPelota(false); 
+    actualizarMarcador(); // Asegura que los contadores arranquen en 00:00
+    dibujar(); 
+    if (!window.bucleActivo) {
+        window.bucleActivo = true;
+        buclePrincipalJuego();
+    }
 }
 
-// BOTÓN: INICIAR SAQUE DE PARTIDA
 function iniciarPartidaFisica() {
     if(partidaEnCurso) return;
     partidaEnCurso = true;
@@ -122,7 +143,6 @@ function iniciarPartidaFisica() {
     }
 }
 
-// BOTÓN: REINICIAR ARENA POR COMPLETO
 function reiniciarPartidaCompleta() {
     p1.score = 0; p2.score = 0;
     p1.y = canvas.height / 2 - paletaAlto / 2;
@@ -136,6 +156,33 @@ function reiniciarPartidaCompleta() {
         conexionOnline.send({ tipo: 'reset_match' });
     }
 }
+
+// NUEVA FUNCIÓN: REGRESAR A LA PANTALLA DE SELECCIÓN INICIAL
+function volverAlMenuInicial() {
+    partidaEnCurso = false;
+    window.bucleActivo = false; // Detiene el renderizado en segundo plano
+    
+    // Si hay una conexión online activa, avisamos y la cerramos
+    if (conexionOnline) {
+        conexionOnline.send({ tipo: 'reset_match' });
+        conexionOnline.close();
+        conexionOnline = null;
+    }
+
+    // Resetear posiciones y marcadores
+    p1.score = 0; p2.score = 0;
+    p1.y = canvas.height / 2 - paletaAlto / 2;
+    p2.y = canvas.height / 2 - paletaAlto / 2;
+
+    // Intercambio visual de pantallas
+    document.getElementById('escenario-juego').classList.add('oculto');
+    document.getElementById('caja-chat-online').classList.add('oculto');
+    document.getElementById('panel-online').classList.add('oculto');
+    document.getElementById('menu-inicio').classList.remove('oculto');
+    document.getElementById('estado-conexion').innerText = "Awaiting operational synchronization...";
+    document.getElementById('input-peer-id').value = '';
+}
+
 
 
 //Bloque 4: Sistema Multijugador y Chat en Tiempo Real
@@ -333,8 +380,10 @@ function sonarTonoRetro(frecuencia, duracion) {
 
 // BUCLE DE RENDERIZADO RECURSIVO A 60FPS
 function buclePrincipalJuego() {
+    if (!window.bucleActivo) return; // Frena el ciclo si volvimos al menú
     actualizar();
     dibujar();
     requestAnimationFrame(buclePrincipalJuego);
 }
+
 
