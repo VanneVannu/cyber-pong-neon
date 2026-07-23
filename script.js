@@ -35,67 +35,47 @@ let velocidadIA = 4.5;
 // REEMPLAZO BLOQUE 2: SOLUCIÓN DE BUCLE DE RED
 // ==========================================
 
+let pubnub = null;
+let miCanalRed = '';
+
 window.onload = function() {
-    console.log("Sistema Cyber Pong listo. Esperando activación de nodo.");
+    console.log("Sistema Cyber Pong listo en infraestructura PubNub.");
 };
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
-    document.getElementById('mi-id').innerText = "SYNCHRONIZING...";
+    document.getElementById('mi-id').innerText = "GENERATING...";
     btn.disabled = true;
 
-    // Generamos el ID local seguro por si el servidor externo tarda o está bloqueado
-    const prefijo = "CP-";
-    const hashAleatorio = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const idGenerado = prefijo + hashAleatorio;
+    // Generamos un ID seguro al instante basado en reloj
+    const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
+    miPeerId = "CP-" + hash;
+    miCanalRed = miPeerId; // La sala de chat/juego llevará el nombre de este ID
 
-    // CONFIGURAMOS UN TEMPORIZADOR DE ESCAPE REBELDE (1.2 segundos)
-    // Si PeerJS no abre la conexión en este tiempo, el sistema fuerza el ID local para romper el bucle
-    const escapeTimeout = setTimeout(() => {
-        console.warn("Fuerza de enlace local activada por seguridad.");
-        document.getElementById('mi-id').innerText = idGenerado;
-        document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
-        btn.innerText = "✔ ACTIVE";
-        miPeerId = idGenerado;
-    }, 1200);
+    // Inicializamos PubNub con llaves públicas demo gratuitas globales
+    pubnub = new PubNub({
+        publishKey: 'pub-c-48c0861a-f10d-4b82-9653-e5d0a6aa0724', // Llaves demo seguras de PubNub
+        subscribeKey: 'sub-c-17e9bbda-39d6-11eb-bc0e-ae62b2d2f7a4',
+        userId: miPeerId
+    });
 
-    try {
-        // Intentamos levantar el puente WebRTC
-        peer = new Peer(idGenerado, {
-            debug: 1,
-            config: { 'iceServers': [{ 'urls': 'stun:://google.com' }] }
-        });
-        
-        peer.on('open', id => {
-            clearTimeout(escapeTimeout); // Cancelamos el escape porque la red sí respondió
-            miPeerId = id;
-            document.getElementById('mi-id').innerText = id;
-            document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
-            btn.innerText = "✔ ACTIVE";
-            console.log("Terminal vinculada en la red global. ID:", id);
-        });
-        
-        peer.on('connection', conn => {
-            conexionOnline = conn;
-            soyHost = true;
-            configurarEventosConexion();
-        });
+    // Nos suscribimos a nuestra propia sala para escuchar cuando entre un enemigo
+    pubnub.subscribe({ channels: [miCanalRed] });
 
-        peer.on('error', err => {
-            clearTimeout(escapeTimeout);
-            document.getElementById('mi-id').innerText = idGenerado;
-            document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
-            btn.innerText = "✔ ACTIVE";
-            miPeerId = idGenerado;
-        });
+    // Escuchador de paquetes de red
+    pubnub.addListener({
+        message: function(event) {
+            // Ignoramos los mensajes que enviamos nosotros mismos
+            if (event.publisher === miPeerId) return;
+            procesarDatosRed(event.message);
+        }
+    });
 
-    } catch (error) {
-        clearTimeout(escapeTimeout);
-        document.getElementById('mi-id').innerText = idGenerado;
-        document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
-        btn.innerText = "✔ ACTIVE";
-        miPeerId = idGenerado;
-    }
+    // Pintamos el código en pantalla al instante sin demoras
+    document.getElementById('mi-id').innerText = miPeerId;
+    document.getElementById('estado-conexion').innerText = "NODE STABLE. SEND ID TO YOUR ENEMY.";
+    btn.innerText = "✔ ACTIVE";
+    soyHost = true;
 }
 
 
@@ -119,17 +99,38 @@ function conectarAEnemigo() {
         alert("🚨 PLEASE ENTER A VALID ENEMY ID");
         return;
     }
-    
+
     document.getElementById('estado-conexion').innerText = "Connecting to remote node...";
-    
-    // Crear el puente de datos
-    if (!peer) {
-        // Si no ha generado su propio ID, creamos una terminal temporal para poder conectarse
-        peer = new Peer();
-        peer.on('open', () => procesarConexionDirecta(idEnemigo));
-    } else {
-        procesarConexionDirecta(idEnemigo);
-    }
+    miCanalRed = idEnemigo; // Nos unimos a la sala del creador
+    soyHost = false;
+    aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_1';
+
+    // Inicializamos nuestra terminal PubNub de cliente
+    pubnub = new PubNub({
+        publishKey: 'pub-c-48c0861a-f10d-4b82-9653-e5d0a6aa0724',
+        subscribeKey: 'sub-c-17e9bbda-39d6-11eb-bc0e-ae62b2d2f7a4',
+        userId: 'CLIENT-' + Math.random().toString(36).substring(2, 5).toUpperCase()
+    });
+
+    pubnub.subscribe({ channels: [miCanalRed] });
+
+    pubnub.addListener({
+        message: function(event) {
+            if (event.publisher === pubnub.getUUID()) return;
+            procesarDatosRed(event.message);
+        }
+    });
+
+    // Al conectarnos con PubNub, disparamos un apretón de manos inmediato a la sala
+    setTimeout(() => {
+        pubnub.publish({
+            channel: miCanalRed,
+            message: { tipo: 'handshake', alias: aliasPropio }
+        });
+        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
+        document.getElementById('caja-chat-online').classList.remove('oculto');
+        arrancarEscenarioJuego();
+    }, 500);
 }
 
 function procesarConexionDirecta(idDestino) {
@@ -242,13 +243,18 @@ function evaluarTeclaChat(e) {
     if(e.key === 'Enter') enviarMensajeChat();
 }
 
+// ENVIAR CHAT POR PUBNUB
 function enviarMensajeChat() {
     const input = document.getElementById('input-msg-chat');
     const msg = input.value.trim();
-    if(!msg || modoActual !== 'online') return;
+    if(!msg || !pubnub) return;
 
     agregarMensajePantalla(aliasPropio, msg);
-    conexionOnline.send({ tipo: 'chat', emisor: aliasPropio, mensaje: msg });
+    
+    pubnub.publish({
+        channel: miCanalRed,
+        message: { tipo: 'chat', emisor: aliasPropio, mensaje: msg }
+    });
     input.value = '';
 }
 
@@ -260,19 +266,42 @@ function agregarMensajePantalla(autor, texto) {
     cajaMsgs.scrollTop = cajaMsgs.scrollHeight;
 }
 
-// ENVIAR MOVIMIENTOS A LA RED CONTRA PARTE
+// TRANSMISIÓN MASIVA DE COORDENADAS POR SEGUNDO
 function enviarDatosRed() {
-    if (!conexionOnline || !conexionOnline.open) return;
+    if (!pubnub || !miCanalRed) return;
+    
+    // Para no saturar el canal, mandamos datos sólo si la partida está corriendo
     if (soyHost) {
-        conexionOnline.send({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score });
+        pubnub.publish({
+            channel: miCanalRed,
+            message: { tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score }
+        });
     } else {
-        conexionOnline.send({ tipo: 'sync', p2Y: p2.y });
+        pubnub.publish({
+            channel: miCanalRed,
+            message: { tipo: 'sync', p2Y: p2.y }
+        });
     }
 }
 
-// PROCESAR ENTRADA DE DATOS DE LA RED
+// PROCESADOR GENERAL DE MENSAJES PUBNUB
 function procesarDatosRed(data) {
     if (data.tipo === 'handshake') {
+        aliasEnemigo = data.alias;
+        document.getElementById('label-p1').innerText = soyHost ? aliasPropio : aliasEnemigo;
+        document.getElementById('label-p2').innerText = soyHost ? aliasEnemigo : aliasPropio;
+        
+        if (soyHost) {
+            // El host responde con su alias al recibir el saludo del cliente
+            pubnub.publish({
+                channel: miCanalRed,
+                message: { tipo: 'handshake_reply', alias: aliasPropio }
+            });
+            document.getElementById('caja-chat-online').classList.remove('oculto');
+            arrancarEscenarioJuego();
+        }
+    }
+    if (data.tipo === 'handshake_reply') {
         aliasEnemigo = data.alias;
         document.getElementById('label-p1').innerText = soyHost ? aliasPropio : aliasEnemigo;
         document.getElementById('label-p2').innerText = soyHost ? aliasEnemigo : aliasPropio;
@@ -301,6 +330,8 @@ function procesarDatosRed(data) {
         }
     }
 }
+
+
 
 
 // Bloque 5: Motor Físico (Movimiento, IA y Colisiones)
