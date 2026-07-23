@@ -56,23 +56,27 @@
     <div id="escenario-juego" class="oculto">
       <div class="cabecera-arena">
         <div class="nombre-marcador" id="label-p1">PLAYER 1</div>
+        
+        <!-- CONTADOR DE PUNTOS DINÁMICO -->
         <div class="marcador">
-          <span id="score-p1">00</span><span class="separador">:</span><span id="score-p2">00</span>
+          <span id="score-p1">00</span>
+          <span class="separador">:</span>
+          <span id="score-p2">00</span>
         </div>
+        
         <div class="nombre-marcador" id="label-p2">PLAYER 2</div>
       </div>
       
-      <!-- CONTROLES DE FLUJO DE PARTIDA -->
+      <!-- CONTROLES DE FLUJO DE PARTIDA CON REGRESO AL MENÚ -->
       <div class="controles-partida">
         <button id="btn-start-match" onclick="iniciarPartidaFisica()">🎮 START MATCH</button>
         <button id="btn-reset-match" onclick="reiniciarPartidaCompleta()">🔄 RESET ARENA</button>
+        <button id="btn-main-menu" onclick="volverAlMenuInicial()">🖥️ MAIN MENU</button>
       </div>
       
       <div class="cuerpo-arena">
-        <!-- Lienzo del juego -->
         <canvas id="lienzo-pong" width="800" height="480"></canvas>
         
-        <!-- CAJA DE CHAT EN RED PARA MODO ONLINE -->
         <div id="caja-chat-online" class="chat-contenedor oculto">
           <div class="chat-cabecera">🌐 COGNITIVE COMS CHAT</div>
           <div id="chat-mensajes" class="chat-mensajes"></div>
@@ -86,6 +90,8 @@
       <div class="controles-ayuda" id="ayuda-teclado">
         Controles: P1 (W/S) | P2 (Flechas ↑/↓)
       </div>
+    </div>
+
     </div>
 
   </div>
