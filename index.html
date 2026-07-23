@@ -5,29 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cyber Pong Neon</title>
   <link rel="stylesheet" href="style.css">
-  <link url="https://googleapis.com" rel="stylesheet">
-    <!-- Librería de Red Ultra Veloz y Gratuita PubNub -->
-  <script src="https://pubnub.com"></script>
-
+  <!-- Fuente Retro de la Cabina -->
+  <link href="https://googleapis.com" rel="stylesheet">
 </head>
 <body>
 
-  <a href="https://synth-joy-station.onrender.com/" class="btn-regresar-arcade">🕹️ EXIT TO CABINET</a>
+  <!-- Botón imperativo para regresar a tu portal central -->
+  <a href="https://synth-joy-station.onrender.com" class="btn-regresar-arcade">🕹️ EXIT TO CABINET</a>
+
+  <!-- Líneas de escaneo CRT para la vibra de monitor de tubo fósforo -->
   <div class="efecto-crt-lineas"></div>
 
+  <!-- CONTENEDOR PRINCIPAL DE LA MAQUINA ARCADE -->
   <div id="contenedor-juego">
     
-    <!-- PANTALLA 1: CONFIGURACIÓN Y MENÚ -->
+    <!-- ===================================================
+         PANTALLA 1: MENU DE SELECCION INICIAL 
+         =================================================== -->
     <div id="menu-inicio">
       <h1 class="titulo-neon">CYBER PONG</h1>
       <p class="subtitulo">VECTOR DEPLOYMENT PROTOCOL</p>
       
-      <!-- SECCIÓN DE ALIAS PERSONALIZADO -->
+      <!-- Bloque para el Alias Personalizado -->
       <div class="seccion-alias">
         <label for="input-alias">ENTER USER ALIAS:</label>
         <input type="text" id="input-alias" value="PLAYER_1" maxlength="12">
       </div>
 
+      <!-- Selector de Dificultad IA -->
       <div class="selector-dificultad">
         <label for="select-diff">IA CORE LEVEL:</label>
         <select id="select-diff">
@@ -37,17 +42,17 @@
         </select>
       </div>
 
+      <!-- Botones de Selección de Modo -->
       <div class="opciones-modo">
         <button class="btn-modo" onclick="seleccionarModo('ia')">💾 VS INFECTED IA (1P)</button>
         <button class="btn-modo" onclick="seleccionarModo('local')">🕹️ LOCAL SPLIT (2P CO-OP)</button>
         <button class="btn-modo" onclick="seleccionarModo('online')">🌐 P2P ONLINE NETWORK</button>
       </div>
 
-      <!-- PANEL MULTIJUGADOR ONLINE HORIZONTAL -->
+      <!-- Panel Multijugador Online Simétrico Horizontal -->
       <div id="panel-online" class="oculto">
         <div class="linea-division"></div>
         
-        <!-- Contenedor alineado horizontalmente -->
         <div class="area-generacion-horizontal">
           <div class="bloque-id-izquierdo">
             <span class="etiqueta-sistema">YOUR SYSTEM ID:</span>
@@ -62,30 +67,28 @@
         </div>
         <p id="estado-conexion">Awaiting manual synchronization protocol...</p>
       </div>
+    </div>
 
-
-    <!-- PANTALLA 2: ÁREA DE JUEGO PRINCIPAL -->
+    <!-- ===================================================
+         PANTALLA 2: AREA DE LA ARENA DE JUEGO
+         =================================================== -->
     <div id="escenario-juego" class="oculto">
       <div class="cabecera-arena">
         <div class="nombre-marcador" id="label-p1">PLAYER 1</div>
-        
-        <!-- CONTADOR DE PUNTOS DINÁMICO -->
         <div class="marcador">
-          <span id="score-p1">00</span>
-          <span class="separador">:</span>
-          <span id="score-p2">00</span>
+          <span id="score-p1">00</span><span class="separador">:</span><span id="score-p2">00</span>
         </div>
-        
         <div class="nombre-marcador" id="label-p2">PLAYER 2</div>
       </div>
       
-      <!-- CONTROLES DE FLUJO DE PARTIDA CON REGRESO AL MENÚ -->
+      <!-- Controles de Flujo Interactivos -->
       <div class="controles-partida">
         <button id="btn-start-match" onclick="iniciarPartidaFisica()">🎮 START MATCH</button>
         <button id="btn-reset-match" onclick="reiniciarPartidaCompleta()">🔄 RESET ARENA</button>
         <button id="btn-main-menu" onclick="volverAlMenuInicial()">🖥️ MAIN MENU</button>
       </div>
       
+      <!-- Distribución Flex del Lienzo y el Chat -->
       <div class="cuerpo-arena">
         <canvas id="lienzo-pong" width="800" height="480"></canvas>
         
@@ -102,8 +105,6 @@
       <div class="controles-ayuda" id="ayuda-teclado">
         Controles: P1 (W/S) | P2 (Flechas ↑/↓)
       </div>
-    </div>
-
     </div>
 
   </div>
