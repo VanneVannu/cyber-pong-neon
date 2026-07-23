@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Pong Neon</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Fuente Retro -->
+  <link url="https://googleapis.com" rel="stylesheet">
+  <!-- Librería PeerJS para el modo online directo entre PCs -->
+  <script src="https://unpkg.com"></script>
+</head>
+<body>
+
+  <!-- Botón imperativo para regresar a la central Synth Joy Station -->
+  <a href="https://onrender.com" class="btn-regresar-arcade">🕹️ EXIT TO CABINET</a>
+
+  <div class="efecto-crt-lineas"></div>
+
+  <div id="contenedor-juego">
+    
+    <!-- PANTALLA 1: MENÚ DE SELECCIÓN DE MODO -->
+    <div id="menu-inicio">
+      <h1 class="titulo-neon">CYBER PONG</h1>
+      <p class="subtitulo">SELECT YOUR CONNECTION PROTOCOL</p>
+      
+       <div class="opciones-modo">
+         <!-- Selector de dificultad exclusivo para el modo IA -->
+         <div class="selector-dificultad">
+          <label for="select-diff">IA CORE LEVEL:</label>
+          <select id="select-diff">
+            <option value="easy">MINIMAL ERROR // EASY</option>
+            <option value="medium" selected>STANDARD LOGIC // MEDIUM</option>
+            <option value="hard">IMPLACABLE BOT // HARD</option>
+          </select>
+        </div>
+
+        <button class="btn-modo" onclick="seleccionarModo('ia')">💾 VS INFECTED IA (1P)</button>
+        <button class="btn-modo" onclick="seleccionarModo('local')">🕹️ LOCAL SPLIT (2P CO-OP)</button>
+        <button class="btn-modo" onclick="seleccionarModo('online')">🌐 P2P ONLINE NETWORK</button>
+      </div>
+
+
+      <!-- Sub-menú oculto que solo aparece si eligen Modo Online -->
+      <div id="panel-online" class="oculto">
+        <div class="linea-division"></div>
+        <p>YOUR SYSTEM ID: <span id="mi-id" class="resaltado">Generando...</span></p>
+        
+        <div class="inputs-online">
+          <input type="text" id="input-peer-id" placeholder="ENTER ENEMY ID...">
+          <button class="btn-accion" onclick="conectarAEnemigo()">CONNECT NODE</button>
+        </div>
+        <p id="estado-conexion">Awaiting operational synchronization...</p>
+      </div>
+    </div>
+
+    <!-- PANTALLA 2: AREA DE JUEGO (Se activa al elegir modo) -->
+    <div id="escenario-juego" class="oculto">
+      <div class="marcador">
+        <span id="score-p1">00</span>
+        <span class="separador">:</span>
+        <span id="score-p2">00</span>
+      </div>
+      
+      <!-- Lienzo donde se dibujarán las paletas neón y la pelota -->
+      <canvas id="lienzo-pong" width="800" height="500"></canvas>
+      
+      <div class="controles-ayuda" id="ayuda-teclado">
+        Controles: P1 (W/S) | P2 (Flechas ↑/↓)
+      </div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

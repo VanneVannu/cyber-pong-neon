@@ -1,0 +1,191 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+body {
+  background-color: #030704; /* Fondo negro verdoso ultra oscuro */
+  color: #e5ffe9;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* BOTÓN SALIDA A LA CABINA (Mantiene el toque Synth Joy para coherencia) */
+.btn-regresar-arcade {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  background: #09140b;
+  border: 2px solid #ffcc00; /* Amarillo arcade */
+  color: #ffcc00;
+  padding: 8px 14px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border-radius: 4px;
+  z-index: 9999;
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.2);
+  transition: all 0.2s ease;
+}
+.btn-regresar-arcade:hover {
+  background: #ffcc00;
+  color: #000;
+  box-shadow: 0 0 15px #ffcc00;
+}
+
+/* EFECTO CRT PANTALLA TUBO FÓSFORO */
+.efecto-crt-lineas {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: linear-gradient(rgba(16, 24, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
+  background-size: 100% 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#contenedor-juego {
+  background: #061208; /* Verde militar oscuro */
+  border: 3px solid #00ff66; /* Verde neón/fósforo */
+  border-radius: 8px;
+  padding: 40px;
+  box-shadow: 0 0 30px rgba(0, 255, 102, 0.2);
+  text-align: center;
+}
+
+.titulo-neon {
+  font-size: 3.5rem;
+  color: #ffcc00; /* Amarillo eléctrico */
+  text-shadow: 0 0 10px #ffcc00, 0 0 20px rgba(0, 255, 102, 0.5);
+  letter-spacing: 5px;
+}
+
+.subtitulo {
+  color: #00ff66; /* Verde fósforo */
+  letter-spacing: 2px;
+  margin-bottom: 30px;
+  font-size: 0.9rem;
+}
+
+.opciones-modo {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 320px;
+  margin: 0 auto;
+}
+
+.btn-modo, .btn-accion {
+  background: #0a1f0f;
+  border: 2px solid #00ff66;
+  color: #00ff66;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-modo:hover, .btn-accion:hover {
+  background: #00ff66;
+  color: #000;
+  box-shadow: 0 0 15px #00ff66;
+}
+
+.oculto { display: none !important; }
+
+/* MENÚ ONLINE */
+#panel-online {
+  margin-top: 20px;
+  animation: desplegar 0.3s ease-out;
+}
+
+.linea-division {
+  border-top: 1px dashed #ffcc00;
+  margin: 20px 0;
+}
+
+.resaltado {
+  color: #ffcc00;
+  font-weight: bold;
+}
+
+.inputs-online {
+  margin: 15px 0;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+#input-peer-id {
+  background: #020803;
+  border: 2px solid #ffcc00;
+  color: #fff;
+  padding: 10px;
+  font-family: inherit;
+  border-radius: 4px;
+  outline: none;
+  width: 180px;
+  text-align: center;
+}
+
+/* LIENZO DE JUEGO (La pantalla de vectores) */
+#lienzo-pong {
+  background: #020502;
+  border: 2px solid #14331a;
+  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.1);
+  display: block;
+  margin-top: 15px;
+}
+
+.marcador {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 255, 102, 0.3);
+}
+.separador { color: #ffcc00; }
+
+.controles-ayuda {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #497a53;
+}
+
+@keyframes desplegar {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* SELECTOR DE DIFICULTAD VECTORES */
+.selector-dificultad {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: #ffcc00;
+}
+
+#select-diff {
+  background: #020803;
+  border: 2px solid #00ff66;
+  color: #00ff66;
+  padding: 8px;
+  font-family: inherit;
+  font-weight: bold;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+#select-diff option {
+  background: #061208;
+  color: #00ff66;
+}
