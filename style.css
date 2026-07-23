@@ -333,3 +333,13 @@ body {
   background: #00ff66;
   color: #000;
 }
+
+#btn-main-menu {
+  border-color: #ffcc00 !important;
+  color: #ffcc00 !important;
+}
+#btn-main-menu:hover {
+  background: #ffcc00 !important;
+  color: #000 !important;
+  box-shadow: 0 0 10px #ffcc00;
+}
