@@ -41,16 +41,23 @@
         <button class="btn-modo" onclick="seleccionarModo('online')">🌐 P2P ONLINE NETWORK</button>
       </div>
 
+      <!-- PANEL MULTIJUGADOR ONLINE -->
       <div id="panel-online" class="oculto">
         <div class="linea-division"></div>
-        <p>YOUR SYSTEM ID: <span id="mi-id" class="resaltado">Generando...</span></p>
+        
+        <!-- Zona de Generación Manual con Botón Metálico -->
+        <div class="area-generacion">
+          <p>YOUR SYSTEM ID: <span id="mi-id" class="resaltado">OFFLINE // N/A</span></p>
+          <button id="btn-crear-id" class="btn-accion" onclick="activarNodoRed()">⚡ GENERATE ID</button>
+        </div>
+        
         <div class="inputs-online">
           <input type="text" id="input-peer-id" placeholder="ENTER ENEMY ID...">
           <button class="btn-accion" onclick="conectarAEnemigo()">CONNECT NODE</button>
         </div>
-        <p id="estado-conexion">Awaiting operational synchronization...</p>
+        <p id="estado-conexion">Awaiting manual synchronization protocol...</p>
       </div>
-    </div>
+
 
     <!-- PANTALLA 2: ÁREA DE JUEGO PRINCIPAL -->
     <div id="escenario-juego" class="oculto">
