@@ -343,3 +343,24 @@ body {
   color: #000 !important;
   box-shadow: 0 0 10px #ffcc00;
 }
+
+.area-generacion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+#btn-crear-id {
+  background: #020803;
+  border-color: #ffcc00;
+  color: #ffcc00;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+}
+#btn-crear-id:hover {
+  background: #ffcc00;
+  color: #000;
+  box-shadow: 0 0 10px #ffcc00;
+}
+
