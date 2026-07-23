@@ -1,29 +1,38 @@
-// CONSTANTES Y CONFIGURACIÓN DEL LIENZO
+// Bloque 1: Declaración de Variables y Captura de Teclado
+// CONFIGURACIÓN DEL LIENZO
 const canvas = document.getElementById('lienzo-pong');
 const ctx = canvas.getContext('2d');
 
-let modoActual = ''; // 'ia', 'local', 'online'
+// VARIABLES DE CONTROL GENERAL Y RED
+let modoActual = '';
 let peer = null;
 let conexionOnline = null;
 let miPeerId = '';
 let soyHost = false;
 
-// PARÁMETROS FÍSICOS DE LOS OBJETOS
+// ALIAS PERSONALIZADOS
+let aliasPropio = 'PLAYER_1';
+let aliasEnemigo = 'COMP_CORE';
+let partidaEnCurso = false; 
+
+// PARÁMETROS FÍSICOS DE LAS PALETAS Y LA PELOTA
 const paletaAncho = 12, paletaAlto = 90;
 const p1 = { x: 20, y: canvas.height / 2 - paletaAlto / 2, score: 0 };
 const p2 = { x: canvas.width - 20 - paletaAncho, y: canvas.height / 2 - paletaAlto / 2, score: 0 };
-const pelota = { x: canvas.width / 2, y: canvas.height / 2, radio: 7, vx: 5, vy: 3, velocidadBase: 6 };
+const pelota = { x: canvas.width / 2, y: canvas.height / 2, radio: 7, vx: 0, vy: 0, velocidadBase: 6 };
 
-// CAPTURA DE TECLADO
+// CAPTURA DE TECLADO GLOBAL
 const teclas = {};
 window.addEventListener('keydown', e => teclas[e.key] = true);
 window.addEventListener('keyup', e => teclas[e.key] = false);
 
-// CONFIGURACIÓN DE LA INTELIGENCIA ARTIFICIAL (Velocidades de seguimiento)
+// VELOCIDADES DE REACCIÓN PARA LA INTELIGENCIA ARTIFICIAL
 const IA_CONFIG = { easy: 2.5, medium: 4.5, hard: 7.5 };
 let velocidadIA = 4.5;
 
-// INICIALIZACIÓN DEL SISTEMA RED P2P (PeerJS)
+
+//Bloque 2: Inicialización de Modos y Conexión de Red P2P (PeerJS)
+// INICIALIZACIÓN DE LA RED PEERJS
 function inicializarPeerJS() {
     peer = new Peer();
     peer.on('open', id => {
@@ -37,19 +46,23 @@ function inicializarPeerJS() {
     });
 }
 
-// CONTROLADORES DE INTERFAZ DEL MENÚ
+// SELECCIÓN DE MODO DESDE LA INTERFAZ
 function seleccionarModo(modo) {
     modoActual = modo;
     velocidadIA = IA_CONFIG[document.getElementById('select-diff').value];
+    aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_1';
 
     if (modo === 'online') {
         document.getElementById('panel-online').classList.remove('oculto');
         if (!peer) inicializarPeerJS();
     } else {
+        if (modo === 'local') aliasEnemigo = 'PLAYER_2';
+        if (modo === 'ia') aliasEnemigo = 'INFECTED_IA';
         arrancarEscenarioJuego();
     }
 }
 
+// CONECTAR AL ID DEL ENEMIGO
 function conectarAEnemigo() {
     const idEnemigo = document.getElementById('input-peer-id').value.trim();
     if (!idEnemigo) return;
@@ -60,122 +73,199 @@ function conectarAEnemigo() {
     configurarEventosConexion();
 }
 
+// CONFIGURAR ESCUCHADORES DE RED
 function configurarEventosConexion() {
     conexionOnline.on('open', () => {
         document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-        setTimeout(() => arrancarEscenarioJuego(), 1000);
+        // Enviamos nuestro Alias personalizado al otro jugador
+        conexionOnline.send({ tipo: 'handshake', alias: aliasPropio });
+        setTimeout(() => {
+            document.getElementById('caja-chat-online').classList.remove('oculto');
+            arrancarEscenarioJuego();
+        }, 1000);
     });
     conexionOnline.on('data', data => procesarDatosRed(data));
 }
 
+//Bloque 3: Controladores del Menú y Flujo de la Partida
+// ARRANCAR EL ESCENARIO GRÁFICO
 function arrancarEscenarioJuego() {
     document.getElementById('menu-inicio').classList.add('oculto');
     document.getElementById('escenario-juego').classList.remove('oculto');
     
     if(modoActual === 'online') {
-        document.getElementById('ayuda-teclado').innerText = soyHost ? "ONLINE: You are P1 (W/S)" : "ONLINE: You are P2 (Flechas ↑/↓)";
-    } else if(modoActual === 'ia') {
-        document.getElementById('ayuda-teclado').innerText = "CONTROLS: P1 (W/S) vs COGNITIVE BOT";
+        document.getElementById('label-p1').innerText = soyHost ? aliasPropio : 'CONNECTING...';
+        document.getElementById('label-p2').innerText = soyHost ? 'CONNECTING...' : aliasPropio;
+        document.getElementById('btn-start-match').innerText = soyHost ? "🎮 START MATCH" : "⏳ AWAITING HOST START";
+        if(!soyHost) document.getElementById('btn-start-match').disabled = true;
+    } else {
+        document.getElementById('label-p1').innerText = aliasPropio;
+        document.getElementById('label-p2').innerText = aliasEnemigo;
     }
     
-    resetPelota();
+    resetPelota(false); // Coloca la pelota congelada en el centro
+    dibujar(); // Fuerza el primer render para visualizar las paletas antes de iniciar
     requestAnimationFrame(buclePrincipalJuego);
 }
 
-// LÓGICA RED MULTIJUGADOR
+// BOTÓN: INICIAR SAQUE DE PARTIDA
+function iniciarPartidaFisica() {
+    if(partidaEnCurso) return;
+    partidaEnCurso = true;
+    
+    pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
+    pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
+    sonarTonoRetro(500, 0.15);
+
+    if (modoActual === 'online' && soyHost) {
+        conexionOnline.send({ tipo: 'start_match', vx: pelota.vx, vy: pelota.vy });
+    }
+}
+
+// BOTÓN: REINICIAR ARENA POR COMPLETO
+function reiniciarPartidaCompleta() {
+    p1.score = 0; p2.score = 0;
+    p1.y = canvas.height / 2 - paletaAlto / 2;
+    p2.y = canvas.height / 2 - paletaAlto / 2;
+    actualizarMarcador();
+    resetPelota(false);
+    partidaEnCurso = false;
+    sonarTonoRetro(200, 0.2);
+
+    if (modoActual === 'online') {
+        conexionOnline.send({ tipo: 'reset_match' });
+    }
+}
+
+
+//Bloque 4: Sistema Multijugador y Chat en Tiempo Real
+// ENVIAR MENSAJES DE CHAT
+function evaluarTeclaChat(e) {
+    if(e.key === 'Enter') enviarMensajeChat();
+}
+
+function enviarMensajeChat() {
+    const input = document.getElementById('input-msg-chat');
+    const msg = input.value.trim();
+    if(!msg || modoActual !== 'online') return;
+
+    agregarMensajePantalla(aliasPropio, msg);
+    conexionOnline.send({ tipo: 'chat', emisor: aliasPropio, mensaje: msg });
+    input.value = '';
+}
+
+function agregarMensajePantalla(autor, texto) {
+    const cajaMsgs = document.getElementById('chat-mensajes');
+    const nuevoMsg = document.createElement('div');
+    nuevoMsg.innerHTML = `<span>[${autor}]:</span> ${texto}`;
+    cajaMsgs.appendChild(nuevoMsg);
+    cajaMsgs.scrollTop = cajaMsgs.scrollHeight;
+}
+
+// ENVIAR MOVIMIENTOS A LA RED CONTRA PARTE
 function enviarDatosRed() {
     if (!conexionOnline || !conexionOnline.open) return;
     if (soyHost) {
-        conexionOnline.send({ p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score });
+        conexionOnline.send({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score });
     } else {
-        conexionOnline.send({ p2Y: p2.y });
+        conexionOnline.send({ tipo: 'sync', p2Y: p2.y });
     }
 }
 
+// PROCESAR ENTRADA DE DATOS DE LA RED
 function procesarDatosRed(data) {
-    if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
-    if (!soyHost) {
-        if (data.p1Y !== undefined) p1.y = data.p1Y;
-        if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
-        if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
+    if (data.tipo === 'handshake') {
+        aliasEnemigo = data.alias;
+        document.getElementById('label-p1').innerText = soyHost ? aliasPropio : aliasEnemigo;
+        document.getElementById('label-p2').innerText = soyHost ? aliasEnemigo : aliasPropio;
+    }
+    if (data.tipo === 'chat') {
+        agregarMensajePantalla(data.emisor, data.mensaje);
+    }
+    if (data.tipo === 'start_match') {
+        partidaEnCurso = true;
+        pelota.vx = data.vx; pelota.vy = data.vy;
+        sonarTonoRetro(500, 0.15);
+    }
+    if (data.tipo === 'reset_match') {
+        p1.score = 0; p2.score = 0;
+        p1.y = canvas.height / 2 - paletaAlto / 2;
+        p2.y = canvas.height / 2 - paletaAlto / 2;
+        actualizarMarcador(); resetPelota(false);
+        partidaEnCurso = false; sonarTonoRetro(200, 0.2);
+    }
+    if (data.tipo === 'sync') {
+        if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
+        if (!soyHost) {
+            if (data.p1Y !== undefined) p1.y = data.p1Y;
+            if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
+            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
+        }
     }
 }
 
-// MOTOR FÍSICO Y ACTUALIZACIONES DE COORDENADAS
+
+// Bloque 5: Motor Físico (Movimiento, IA y Colisiones)
+// CALCULADORA DE COORDENADAS E IMPACTOS
 function actualizar() {
-    // Control Jugador 1 (W/S) - Activo en Local, IA y si es Host Online
+    // Control P1
     if (modoActual !== 'online' || soyHost) {
         if (teclas['w'] || teclas['W']) p1.y = Math.max(10, p1.y - 6);
         if (teclas['s'] || teclas['S']) p1.y = Math.min(canvas.height - paletaAlto - 10, p1.y + 6);
     }
-
-    // Control Jugador 2 (Flechas) - Activo en Local y si es Cliente Online
+    // Control P2
     if (modoActual === 'local' || (modoActual === 'online' && !soyHost)) {
         if (teclas['ArrowUp']) p2.y = Math.max(10, p2.y - 6);
         if (teclas['ArrowDown']) p2.y = Math.min(canvas.height - paletaAlto - 10, p2.y + 6);
     }
 
-    // LÓGICA DE COMPUTADORA VS IA INTELIGENTE
+    // COMPORTAMIENTO TÁCTICO DE LA IA INTERACTIVA
     if (modoActual === 'ia') {
         let centroPaleta = p2.y + paletaAlto / 2;
-        let destinoY = pelota.y;
-        
-        // La IA rastrea la pelota solo cuando viene hacia su mitad de campo
-        if (pelota.vx > 0) {
-            if (centroPaleta < destinoY - 10) {
-                p2.y = Math.min(canvas.height - paletaAlto - 10, p2.y + velocidadIA);
-            } else if (centroPaleta > destinoY + 10) {
-                p2.y = Math.max(10, p2.y - velocidadIA);
-            }
+        if (pelota.vx > 0) { // Solo sigue la bola si va hacia ella
+            if (centroPaleta < pelota.y - 12) p2.y = Math.min(canvas.height - paletaAlto - 10, p2.y + velocidadIA);
+            else if (centroPaleta > pelota.y + 12) p2.y = Math.max(10, p2.y - velocidadIA);
         }
     }
 
-    // FÍSICAS DE LA PELOTA (El Host calcula la pelota de forma centralizada en Online)
-    if (modoActual !== 'online' || soyHost) {
-        pelota.x += pelota.x === canvas.width / 2 && pelota.y === canvas.height / 2 ? 0 : pelota.vx;
-        pelota.y += pelota.x === canvas.width / 2 && pelota.y === canvas.height / 2 ? 0 : pelota.vy;
+    // FÍSICAS DE REBOTE DE LA PELOTA
+    if (partidaEnCurso && (modoActual !== 'online' || soyHost)) {
+        pelota.x += pelota.vx;
+        pelota.y += pelota.vy;
 
-        // Rebotes Techo y Piso
         if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= canvas.height) {
             pelota.vy = -pelota.vy;
-            sonarTonoRetro(300, 0.05); // Sonido rápido de rebote
+            sonarTonoRetro(300, 0.05);
         }
 
-        // Colisión Paleta 1
         if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
             calcularReboteAngulo(p1);
         }
-
-        // Colisión Paleta 2
         if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
             calcularReboteAngulo(p2);
         }
 
-        // Goles y Anotación
         if (pelota.x < 0) { p2.score++; responderPunto(); }
         else if (pelota.x > canvas.width) { p1.score++; responderPunto(); }
     }
-
     enviarDatosRed();
 }
 
 function calcularReboteAngulo(paleta) {
     let impactoRelativo = (pelota.y - (paleta.y + paletaAlto / 2)) / (paletaAlto / 2);
-    let anguloGiro = impactoRelativo * (Math.PI / 4); // Máximo 45 grados de desviación
+    let anguloGiro = impactoRelativo * (Math.PI / 4);
     let direccion = pelota.vx > 0 ? -1 : 1;
-
-    // Aceleración de velocidad progresiva del juego arcade
-    let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3;
+    let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3; // Aceleración arcade
     
     pelota.vx = direccion * velocidadActual * Math.cos(anguloGiro);
     pelota.vy = velocidadActual * Math.sin(anguloGiro);
-    sonarTonoRetro(600, 0.08); // Tono agudo al golpear raqueta
+    sonarTonoRetro(600, 0.08);
 }
 
 function responderPunto() {
     actualizarMarcador();
-    sonarTonoRetro(150, 0.3); // Sonido grave de anotación
-    resetPelota();
+    sonarTonoRetro(150, 0.3);
+    resetPelota(true); // Reinicia con saque instantáneo tras un gol
 }
 
 function actualizarMarcador() {
@@ -183,53 +273,54 @@ function actualizarMarcador() {
     document.getElementById('score-p2').innerText = p2.score.toString().padStart(2, '0');
 }
 
-function resetPelota() {
+function resetPelota(autoLanzar = false) {
     pelota.x = canvas.width / 2;
     pelota.y = canvas.height / 2;
-    // Disparo inicial aleatorio
-    pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
-    pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
+    if (autoLanzar) {
+        pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
+        pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
+    } else {
+        pelota.vx = 0; pelota.vy = 0;
+        partidaEnCurso = false;
+    }
 }
 
-// RENDERIZADO VISUAL CON ESTILO VECTORES NEÓN (Verde y Amarillo)
+//Bloque 6: Renderizado Gráfico Véctores y Oscilador de Sonido (Bucle de FPS)
+// DIBUJAR LOS ELEMENTOS CON SOMBRAS DE NEÓN
 function dibujar() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Línea divisoria central punteada militar
+    // Línea central de red militar
     ctx.strokeStyle = 'rgba(0, 255, 102, 0.15)';
     ctx.lineWidth = 4;
-    ctx.setLineDash([15, 15]);
     ctx.beginPath();
     ctx.moveTo(canvas.width / 2, 0);
     ctx.lineTo(canvas.width / 2, canvas.height);
     ctx.stroke();
-    ctx.setLineDash([]); // Reset line dash
 
-    // Dibujar Paleta 1 (Verde Fósforo)
+    // Paletas Verdes Fósforo
     ctx.fillStyle = '#00ff66';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#00ff66';
     ctx.fillRect(p1.x, p1.y, paletaAncho, paletaAlto);
-
-    // Dibujar Paleta 2 (Verde Fósforo)
     ctx.fillRect(p2.x, p2.y, paletaAncho, paletaAlto);
 
-    // Dibujar Pelota (Amarillo Eléctrico)
+    // Pelota Amarilla Eléctrica
     ctx.fillStyle = '#ffcc00';
     ctx.shadowColor = '#ffcc00';
     ctx.beginPath();
     ctx.arc(pelota.x, pelota.y, pelota.radio, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0; // Limpiar brillo para evitar baja de FPS
+    ctx.shadowBlur = 0; // Desactivar sombra al terminar para optimizar rendimiento
 }
 
-// SINTETIZADOR DE AUDIO RETRO DE CONSOLA BEEP INTEGRADO (Web Audio API)
+// GENERADOR DE BEEPS RETRO DE CONSOLA DE 8 BITS
 function sonarTonoRetro(frecuencia, duracion) {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     
-    osc.type = 'square'; // Sonido cuadrado ultra retro de 8 bits
+    osc.type = 'square'; // Onda cuadrada clásica de maquinita arcade
     osc.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
     gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duracion);
@@ -240,9 +331,10 @@ function sonarTonoRetro(frecuencia, duracion) {
     osc.stop(audioCtx.currentTime + duracion);
 }
 
-// BUCLE DINÁMICO DE RENDERIZACIÓN A 60FPS
-function buplePrincipalJuego() {
+// BUCLE DE RENDERIZADO RECURSIVO A 60FPS
+function buclePrincipalJuego() {
     actualizar();
     dibujar();
-    requestAnimationFrame(buplePrincipalJuego);
+    requestAnimationFrame(buclePrincipalJuego);
 }
+
