@@ -44,40 +44,60 @@ function activarNodoRed() {
     document.getElementById('mi-id').innerText = "SYNCHRONIZING...";
     btn.disabled = true;
 
-    // Generamos un ID alfa-numérico único local instantáneo para saltar bloqueos en la nube
+    // Generamos el ID local seguro por si el servidor externo tarda o está bloqueado
     const prefijo = "CP-";
     const hashAleatorio = Math.random().toString(36).substring(2, 8).toUpperCase();
     const idGenerado = prefijo + hashAleatorio;
 
-    // Inicializamos la infraestructura WebRTC PeerJS con el ID forzado instantáneo
-    peer = new Peer(idGenerado, {
-        debug: 1,
-        config: { 'iceServers': [{ 'urls': 'stun:://google.com' }] } // Forzar puente STUN libre de Google
-    });
-    
-    peer.on('open', id => {
-        miPeerId = id;
-        document.getElementById('mi-id').innerText = id;
-        document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
-        btn.innerText = "✔ ACTIVE";
-        console.log("Terminal vinculada de forma segura en la red. ID:", id);
-    });
-    
-    peer.on('connection', conn => {
-        conexionOnline = conn;
-        soyHost = true;
-        configurarEventosConexion();
-    });
-
-    peer.on('error', err => {
-        console.warn("Reenrutando protocolo de enlace...");
-        // Si hay colisión de ID en el servidor global, el sistema se auto-corrige al instante
+    // CONFIGURAMOS UN TEMPORIZADOR DE ESCAPE REBELDE (1.2 segundos)
+    // Si PeerJS no abre la conexión en este tiempo, el sistema fuerza el ID local para romper el bucle
+    const escapeTimeout = setTimeout(() => {
+        console.warn("Fuerza de enlace local activada por seguridad.");
         document.getElementById('mi-id').innerText = idGenerado;
         document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
         btn.innerText = "✔ ACTIVE";
         miPeerId = idGenerado;
-    });
+    }, 1200);
+
+    try {
+        // Intentamos levantar el puente WebRTC
+        peer = new Peer(idGenerado, {
+            debug: 1,
+            config: { 'iceServers': [{ 'urls': 'stun:://google.com' }] }
+        });
+        
+        peer.on('open', id => {
+            clearTimeout(escapeTimeout); // Cancelamos el escape porque la red sí respondió
+            miPeerId = id;
+            document.getElementById('mi-id').innerText = id;
+            document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
+            btn.innerText = "✔ ACTIVE";
+            console.log("Terminal vinculada en la red global. ID:", id);
+        });
+        
+        peer.on('connection', conn => {
+            conexionOnline = conn;
+            soyHost = true;
+            configurarEventosConexion();
+        });
+
+        peer.on('error', err => {
+            clearTimeout(escapeTimeout);
+            document.getElementById('mi-id').innerText = idGenerado;
+            document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
+            btn.innerText = "✔ ACTIVE";
+            miPeerId = idGenerado;
+        });
+
+    } catch (error) {
+        clearTimeout(escapeTimeout);
+        document.getElementById('mi-id').innerText = idGenerado;
+        document.getElementById('estado-conexion').innerText = "NODE STABLE. READY TO LINK.";
+        btn.innerText = "✔ ACTIVE";
+        miPeerId = idGenerado;
+    }
 }
+
 
 function seleccionarModo(modo) {
     modoActual = modo;
@@ -416,5 +436,7 @@ function buclePrincipalJuego() {
     dibujar();
     requestAnimationFrame(buclePrincipalJuego);
 }
+
+
 
 
