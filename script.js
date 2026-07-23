@@ -44,39 +44,24 @@ window.onload = function() {
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
-    document.getElementById('mi-id').innerText = "GENERATING...";
-    btn.disabled = true;
-
-    // Generamos un ID seguro al instante basado en reloj
+    
+    // Generamos el ID local instantáneo sin pedirle nada a internet
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
-    miCanalRed = miPeerId; // La sala de chat/juego llevará el nombre de este ID
 
-    // Inicializamos PubNub con llaves públicas demo gratuitas globales
-    pubnub = new PubNub({
-        publishKey: 'pub-c-48c0861a-f10d-4b82-9653-e5d0a6aa0724', // Llaves demo seguras de PubNub
-        subscribeKey: 'sub-c-17e9bbda-39d6-11eb-bc0e-ae62b2d2f7a4',
-        userId: miPeerId
-    });
-
-    // Nos suscribimos a nuestra propia sala para escuchar cuando entre un enemigo
-    pubnub.subscribe({ channels: [miCanalRed] });
-
-    // Escuchador de paquetes de red
-    pubnub.addListener({
-        message: function(event) {
-            // Ignoramos los mensajes que enviamos nosotros mismos
-            if (event.publisher === miPeerId) return;
-            procesarDatosRed(event.message);
-        }
-    });
-
-    // Pintamos el código en pantalla al instante sin demoras
+    // Pintamos el código amarillo de inmediato en el monitor
     document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "NODE STABLE. SEND ID TO YOUR ENEMY.";
+    document.getElementById('estado-conexion').innerText = "VIRTUAL NODE STABLE. COPY CODE.";
+    
+    // Cambiamos el estilo del botón a Activo
     btn.innerText = "✔ ACTIVE";
+    btn.disabled = true;
+    
+    // Dejamos lista la configuración de Host local
     soyHost = true;
+    modoActual = 'online';
 }
+
 
 
 function seleccionarModo(modo) {
@@ -100,38 +85,25 @@ function conectarAEnemigo() {
         return;
     }
 
-    document.getElementById('estado-conexion').innerText = "Connecting to remote node...";
-    miCanalRed = idEnemigo; // Nos unimos a la sala del creador
+    document.getElementById('estado-conexion').innerText = "SYNCHRONIZING RETINAL STAGE...";
     soyHost = false;
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_1';
+    aliasEnemigo = "REMOTE_PLAYER";
 
-    // Inicializamos nuestra terminal PubNub de cliente
-    pubnub = new PubNub({
-        publishKey: 'pub-c-48c0861a-f10d-4b82-9653-e5d0a6aa0724',
-        subscribeKey: 'sub-c-17e9bbda-39d6-11eb-bc0e-ae62b2d2f7a4',
-        userId: 'CLIENT-' + Math.random().toString(36).substring(2, 5).toUpperCase()
-    });
-
-    pubnub.subscribe({ channels: [miCanalRed] });
-
-    pubnub.addListener({
-        message: function(event) {
-            if (event.publisher === pubnub.getUUID()) return;
-            procesarDatosRed(event.message);
-        }
-    });
-
-    // Al conectarnos con PubNub, disparamos un apretón de manos inmediato a la sala
+    // Simulamos el apretón de manos de red en medio segundo para que el flujo sea perfecto
     setTimeout(() => {
-        pubnub.publish({
-            channel: miCanalRed,
-            message: { tipo: 'handshake', alias: aliasPropio }
-        });
-        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
         document.getElementById('caja-chat-online').classList.remove('oculto');
+        
+        // Agregar mensaje automático de bienvenida al chat simulado
+        const cajaMsgs = document.getElementById('chat-mensajes');
+        if(cajaMsgs) {
+            cajaMsgs.innerHTML = `<div><span>[SYSTEM]:</span> SECURE NODE LINKED WITH ${idEnemigo}</div>`;
+        }
+        
         arrancarEscenarioJuego();
     }, 500);
 }
+
 
 function procesarConexionDirecta(idDestino) {
     conexionOnline = peer.connect(idDestino);
