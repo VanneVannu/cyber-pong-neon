@@ -41,14 +41,17 @@
         <button class="btn-modo" onclick="seleccionarModo('online')">🌐 P2P ONLINE NETWORK</button>
       </div>
 
-      <!-- PANEL MULTIJUGADOR ONLINE -->
+      <!-- PANEL MULTIJUGADOR ONLINE HORIZONTAL -->
       <div id="panel-online" class="oculto">
         <div class="linea-division"></div>
         
-        <!-- Zona de Generación Manual con Botón Metálico -->
-        <div class="area-generacion">
-          <p>YOUR SYSTEM ID: <span id="mi-id" class="resaltado">OFFLINE // N/A</span></p>
-          <button id="btn-crear-id" class="btn-accion" onclick="activarNodoRed()">⚡ GENERATE ID</button>
+        <!-- Contenedor alineado horizontalmente -->
+        <div class="area-generacion-horizontal">
+          <div class="bloque-id-izquierdo">
+            <span class="etiqueta-sistema">YOUR SYSTEM ID:</span>
+            <span id="mi-id" class="resaltado">OFFLINE // N/A</span>
+          </div>
+          <button id="btn-crear-id" class="btn-accion-derecho" onclick="activarNodoRed()">⚡ GENERATE ID</button>
         </div>
         
         <div class="inputs-online">
