@@ -32,22 +32,31 @@ let velocidadIA = 4.5;
 
 
 // ==========================================
-// REEMPLAZO BLOQUE 2: INICIALIZACIÓN Y RED FIXED
+// REEMPLAZO BLOQUE 2: RED ACTIVADA POR BOTÓN
 // ==========================================
 
-// Forzamos a PeerJS a inicializarse en cuanto carga la página para que el ID esté listo de inmediato
+// Eliminamos el inicio automático al cargar la página para dar estabilidad
 window.onload = function() {
-    inicializarPeerJS();
+    console.log("Sistema Cyber Pong inicializado en espera de comandos.");
 };
 
-function inicializarPeerJS() {
-    // Inicializamos con el servidor gratuito global de PeerJS
+// Esta función se ejecuta SÓLO cuando presionan el botón de generar
+function activarNodoRed() {
+    const btn = document.getElementById('btn-crear-id');
+    document.getElementById('mi-id').innerText = "GENERATING NODE...";
+    btn.disabled = true; // Evita que el usuario pulse múltiples veces seguidas
+    
+    // Inicializamos el puente PeerJS
     peer = new Peer(undefined, { debug: 2 });
     
     peer.on('open', id => {
         miPeerId = id;
         document.getElementById('mi-id').innerText = id;
-        console.log("Nodo de red listo. ID generado:", id);
+        document.getElementById('estado-conexion').innerText = "NODE STABLE. ready to link.";
+        btn.innerText = "✔ NODE ACTIVE";
+        btn.style.borderColor = "#00ff66";
+        btn.style.color = "#00ff66";
+        console.log("Enlace P2P establecido con éxito. ID:", id);
     });
     
     peer.on('connection', conn => {
@@ -57,8 +66,11 @@ function inicializarPeerJS() {
     });
 
     peer.on('error', err => {
-        console.error("Error en el nodo de red:", err);
-        document.getElementById('estado-conexion').innerText = "Network Error. Retry node.";
+        console.error("Fallo de red:", err);
+        document.getElementById('mi-id').innerText = "ERROR CODE";
+        document.getElementById('estado-conexion').innerText = "Server Timeout. Retry generation.";
+        btn.disabled = false;
+        btn.innerText = "⚡ RETRY GENERATE";
     });
 }
 
@@ -100,6 +112,7 @@ function configurarEventosConexion() {
     });
     conexionOnline.on('data', data => procesarDatosRed(data));
 }
+
 
 // ==========================================
 // REEMPLAZO BLOQUE 3: FLUJO DE PARTIDA Y VOLVER AL MENÚ
@@ -385,5 +398,7 @@ function buclePrincipalJuego() {
     dibujar();
     requestAnimationFrame(buclePrincipalJuego);
 }
+
+
 
 
