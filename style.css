@@ -11,7 +11,7 @@
 }
 
 body {
-  background-color: #030704; /* Fondo negro verdoso militar */
+  background-color: #030704; 
   color: #e5ffe9;
   min-height: 100vh;
   display: flex;
@@ -39,9 +39,7 @@ body {
   transition: all 0.2s ease;
 }
 .btn-regresar-arcade:hover {
-  background: #ffcc00;
-  color: #000;
-  box-shadow: 0 0 15px #ffcc00;
+  background: #ffcc00; color: #000; box-shadow: 0 0 15px #ffcc00;
 }
 
 /* EFECTO CRT PANTALLA RETRO */
@@ -54,20 +52,26 @@ body {
   pointer-events: none;
 }
 
-/* CONTENEDOR DE LA MAQUINA (Fija las dimensiones para que no colapse) */
+/* CONTENEDOR DE LA MÁQUINA */
 #contenedor-juego {
   background: #061208;
   border: 3px solid #00ff66;
   border-radius: 8px;
-  padding: 30px;
+  padding: 40px;
   box-shadow: 0 0 30px rgba(0, 255, 102, 0.2);
   text-align: center;
   width: 90%;
   max-width: 1150px;
-  min-height: 600px;
+  min-height: 580px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+}
+
+/* REGLA SAGRADA DE INTERCAMBIO DE PANTALLAS */
+.oculto { 
+  display: none !important; 
 }
 
 /* INTERFAZ DEL MENÚ INICIAL */
@@ -93,7 +97,6 @@ body {
   font-size: 0.9rem;
 }
 
-/* CAJAS DE INPUTS Y AJUSTES */
 .seccion-alias, .selector-dificultad {
   display: flex;
   flex-direction: column;
@@ -122,6 +125,7 @@ body {
   flex-direction: column;
   gap: 12px;
   width: 320px;
+  margin-top: 10px;
 }
 
 .btn-modo, .btn-accion {
@@ -136,32 +140,21 @@ body {
   transition: all 0.2s;
 }
 .btn-modo:hover, .btn-accion:hover {
-  background: #00ff66;
-  color: #000;
-  box-shadow: 0 0 15px #00ff66;
+  background: #00ff66; color: #000; box-shadow: 0 0 15px #00ff66;
 }
 
-.oculto { display: none !important; }
-
-/* PANEL ONLINE SIMÉTRICO HORIZONTAL */
+/* PANEL ONLINE HORIZONTAL */
 #panel-online {
   width: 450px;
   margin-top: 15px;
 }
 .linea-division {
-  border-top: 1px dashed #ffcc00;
-  margin: 15px 0;
+  border-top: 1px dashed #ffcc00; margin: 15px 0;
 }
 .area-generacion-horizontal {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #020803;
-  border: 1px dashed #14331a;
-  padding: 12px 20px;
-  border-radius: 4px;
-  margin-bottom: 15px;
-  width: 100%;
+  display: flex; justify-content: space-between; align-items: center;
+  background: #020803; border: 1px dashed #14331a; padding: 12px 20px;
+  border-radius: 4px; margin-bottom: 15px; width: 100%;
 }
 .bloque-id-izquierdo { display: flex; flex-direction: column; text-align: left; }
 .etiqueta-sistema { font-size: 0.8rem; color: #497a53; }
@@ -169,7 +162,7 @@ body {
 
 .btn-accion-derecho {
   background: #0a1f0f; border: 2px solid #ffcc00; color: #ffcc00;
-  padding: 6px 14px; font-size: 0.85rem; font-family: inherit;
+  padding: 8px 14px; font-size: 0.85rem; font-family: inherit;
   font-weight: bold; cursor: pointer; border-radius: 4px;
 }
 .btn-accion-derecho:hover { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
@@ -191,12 +184,8 @@ body {
 }
 
 .cabecera-arena {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  border-bottom: 1px dashed #00ff66;
-  padding-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 15px; border-bottom: 1px dashed #00ff66; padding-bottom: 10px;
 }
 .nombre-marcador { font-size: 1.3rem; color: #ffcc00; font-weight: bold; width: 200px; }
 #label-p1 { text-align: left; }
@@ -214,30 +203,18 @@ body {
 #btn-reset-match, #btn-main-menu { border-color: #ffcc00; color: #ffcc00; }
 #btn-reset-match:hover, #btn-main-menu:hover { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
 
-/* DISEÑO DE CANAL ALINEADO CON EL CHAT */
 .cuerpo-arena {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  align-items: stretch;
-  width: 100%;
+  display: flex; gap: 20px; justify-content: center; align-items: stretch; width: 100%;
 }
 
 #lienzo-pong {
-  background: #020502;
-  border: 2px solid #14331a;
-  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.15);
-  display: block;
+  background: #020502; border: 2px solid #14331a;
+  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.15); display: block;
 }
 
 /* CAJA DE CHAT */
 .chat-contenedor {
-  width: 260px;
-  background: #040d05;
-  border: 2px solid #00ff66;
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
+  width: 260px; background: #040d05; border: 2px solid #00ff66; border-radius: 4px; display: flex; flex-direction: column;
 }
 .chat-cabecera { background: #0a1f0f; border-bottom: 1px solid #00ff66; padding: 8px; font-size: 0.8rem; font-weight: bold; color: #00ff66; }
 .chat-mensajes { flex-grow: 1; padding: 10px; overflow-y: auto; font-size: 0.85rem; text-align: left; display: flex; flex-direction: column; gap: 6px; max-height: 380px; color: #e5ffe9; }
