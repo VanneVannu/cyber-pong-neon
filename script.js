@@ -1,69 +1,35 @@
-// Bloque 1: Declaración de Variables y Captura de Teclado
-// CONFIGURACIÓN DEL LIENZO
+// ==========================================
+// 1. CONSTANTES Y CONFIGURACIÓN DEL LIENZO
+// ==========================================
 const canvas = document.getElementById('lienzo-pong');
 const ctx = canvas.getContext('2d');
 
-// VARIABLES DE CONTROL GENERAL Y RED
 let modoActual = '';
-let peer = null;
-let conexionOnline = null;
 let miPeerId = '';
 let soyHost = false;
-
-// ALIAS PERSONALIZADOS
-let aliasPropio = 'PLAYER_1';
-let aliasEnemigo = 'COMP_CORE';
 let partidaEnCurso = false; 
 
-// PARÁMETROS FÍSICOS DE LAS PALETAS Y LA PELOTA
-const paletaAncho = 12, paletaAlto = 90;
-const p1 = { x: 20, y: canvas.height / 2 - paletaAlto / 2, score: 0 };
-const p2 = { x: canvas.width - 20 - paletaAncho, y: canvas.height / 2 - paletaAlto / 2, score: 0 };
-const pelota = { x: canvas.width / 2, y: canvas.height / 2, radio: 7, vx: 0, vy: 0, velocidadBase: 6 };
+let aliasPropio = 'PLAYER_1';
+let aliasEnemigo = 'COMP_CORE';
 
-// CAPTURA DE TECLADO GLOBAL
+const paletaAncho = 12, paletaAlto = 90;
+const p1 = { x: 20, y: 480 / 2 - paletaAlto / 2, score: 0 };
+const p2 = { x: 800 - 20 - paletaAncho, y: 480 / 2 - paletaAlto / 2, score: 0 };
+const pelota = { x: 800 / 2, y: 480 / 2, radio: 7, vx: 0, vy: 0, velocidadBase: 6 };
+
 const teclas = {};
 window.addEventListener('keydown', e => teclas[e.key] = true);
 window.addEventListener('keyup', e => teclas[e.key] = false);
 
-// VELOCIDADES DE REACCIÓN PARA LA INTELIGENCIA ARTIFICIAL
 const IA_CONFIG = { easy: 2.5, medium: 4.5, hard: 7.5 };
 let velocidadIA = 4.5;
 
+// CONTROL DE RENDERIZADO ACTIVADO ÚNICAMENTE EN COMBATE
+window.bucleActivo = false;
 
 // ==========================================
-// REEMPLAZO BLOQUE 2: SOLUCIÓN DE BUCLE DE RED
+// 2. CONTROLADORES DEL MENÚ Y FLUJO ARCADE
 // ==========================================
-
-let pubnub = null;
-let miCanalRed = '';
-
-window.onload = function() {
-    console.log("Sistema Cyber Pong listo en infraestructura PubNub.");
-};
-
-function activarNodoRed() {
-    const btn = document.getElementById('btn-crear-id');
-    
-    // Generamos el ID local instantáneo sin pedirle nada a internet
-    const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
-    miPeerId = "CP-" + hash;
-
-    // Pintamos el código amarillo de inmediato en el monitor
-    document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "VIRTUAL NODE STABLE. COPY CODE.";
-    
-    // Cambiamos el estilo del botón a Activo
-    btn.innerText = "✔ ACTIVE";
-    btn.disabled = true;
-    
-    // Dejamos lista la configuración de Host local
-    soyHost = true;
-    modoActual = 'online';
-}
-
-
-
 function seleccionarModo(modo) {
     modoActual = modo;
     velocidadIA = IA_CONFIG[document.getElementById('select-diff').value];
@@ -77,57 +43,6 @@ function seleccionarModo(modo) {
         arrancarEscenarioJuego();
     }
 }
-
-function conectarAEnemigo() {
-    const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
-    if (!idEnemigo) {
-        alert("🚨 PLEASE ENTER A VALID ENEMY ID");
-        return;
-    }
-
-    document.getElementById('estado-conexion').innerText = "SYNCHRONIZING RETINAL STAGE...";
-    soyHost = false;
-    aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_1';
-    aliasEnemigo = "REMOTE_PLAYER";
-
-    // Simulamos el apretón de manos de red en medio segundo para que el flujo sea perfecto
-    setTimeout(() => {
-        document.getElementById('caja-chat-online').classList.remove('oculto');
-        
-        // Agregar mensaje automático de bienvenida al chat simulado
-        const cajaMsgs = document.getElementById('chat-mensajes');
-        if(cajaMsgs) {
-            cajaMsgs.innerHTML = `<div><span>[SYSTEM]:</span> SECURE NODE LINKED WITH ${idEnemigo}</div>`;
-        }
-        
-        arrancarEscenarioJuego();
-    }, 500);
-}
-
-
-function procesarConexionDirecta(idDestino) {
-    conexionOnline = peer.connect(idDestino);
-    soyHost = false;
-    configurarEventosConexion();
-}
-
-function configurarEventosConexion() {
-    conexionOnline.on('open', () => {
-        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-        conexionOnline.send({ tipo: 'handshake', alias: aliasPropio });
-        setTimeout(() => {
-            document.getElementById('caja-chat-online').classList.remove('oculto');
-            arrancarEscenarioJuego();
-        }, 1000);
-    });
-    conexionOnline.on('data', data => procesarDatosRed(data));
-}
-
-
-
-// ==========================================
-// REEMPLAZO BLOQUE 3: FLUJO DE PARTIDA Y VOLVER AL MENÚ
-// ==========================================
 
 function arrancarEscenarioJuego() {
     document.getElementById('menu-inicio').classList.add('oculto');
@@ -146,14 +61,55 @@ function arrancarEscenarioJuego() {
     }
     
     resetPelota(false); 
-    actualizarMarcador(); // Asegura que los contadores arranquen en 00:00
+    actualizarMarcador(); 
     dibujar(); 
+
     if (!window.bucleActivo) {
         window.bucleActivo = true;
         buclePrincipalJuego();
     }
 }
 
+// SIMULADOR SOBERANO DE RED LOCAL
+function activarNodoRed() {
+    const btn = document.getElementById('btn-crear-id');
+    const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
+    miPeerId = "CP-" + hash;
+
+    document.getElementById('mi-id').innerText = miPeerId;
+    document.getElementById('estado-conexion').innerText = "VIRTUAL NODE STABLE. COPY CODE.";
+    
+    btn.innerText = "✔ ACTIVE";
+    btn.disabled = true;
+    soyHost = true;
+    modoActual = 'online';
+}
+
+function conectarAEnemigo() {
+    const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
+    if (!idEnemigo) {
+        alert("🚨 PLEASE ENTER A VALID ENEMY ID");
+        return;
+    }
+
+    document.getElementById('estado-conexion').innerText = "SYNCHRONIZING RETINAL STAGE...";
+    soyHost = false;
+    aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_1';
+    aliasEnemigo = "REMOTE_PLAYER";
+
+    setTimeout(() => {
+        document.getElementById('caja-chat-online').classList.remove('oculto');
+        const cajaMsgs = document.getElementById('chat-mensajes');
+        if(cajaMsgs) {
+            cajaMsgs.innerHTML = `<div><span>[SYSTEM]:</span> SECURE NODE LINKED WITH ${idEnemigo}</div>`;
+        }
+        arrancarEscenarioJuego();
+    }, 500);
+}
+
+// ==========================================
+// 3. CONTROLES DE PARTIDA Y SAQUE
+// ==========================================
 function iniciarPartidaFisica() {
     if(partidaEnCurso) return;
     partidaEnCurso = true;
@@ -161,180 +117,66 @@ function iniciarPartidaFisica() {
     pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
     pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
     sonarTonoRetro(500, 0.15);
-
-    if (modoActual === 'online' && soyHost) {
-        conexionOnline.send({ tipo: 'start_match', vx: pelota.vx, vy: pelota.vy });
-    }
 }
 
 function reiniciarPartidaCompleta() {
     p1.score = 0; p2.score = 0;
-    p1.y = canvas.height / 2 - paletaAlto / 2;
-    p2.y = canvas.height / 2 - paletaAlto / 2;
+    p1.y = 480 / 2 - paletaAlto / 2;
+    p2.y = 480 / 2 - paletaAlto / 2;
     actualizarMarcador();
     resetPelota(false);
     partidaEnCurso = false;
     sonarTonoRetro(200, 0.2);
-
-    if (modoActual === 'online') {
-        conexionOnline.send({ tipo: 'reset_match' });
-    }
 }
 
-// NUEVA FUNCIÓN: REGRESAR A LA PANTALLA DE SELECCIÓN INICIAL
 function volverAlMenuInicial() {
     partidaEnCurso = false;
-    window.bucleActivo = false; // Detiene el renderizado en segundo plano
-    
-    // Si hay una conexión online activa, avisamos y la cerramos
-    if (conexionOnline) {
-        conexionOnline.send({ tipo: 'reset_match' });
-        conexionOnline.close();
-        conexionOnline = null;
-    }
+    window.bucleActivo = false; 
 
-    // Resetear posiciones y marcadores
     p1.score = 0; p2.score = 0;
-    p1.y = canvas.height / 2 - paletaAlto / 2;
-    p2.y = canvas.height / 2 - paletaAlto / 2;
+    p1.y = 480 / 2 - paletaAlto / 2;
+    p2.y = 480 / 2 - paletaAlto / 2;
 
-    // Intercambio visual de pantallas
     document.getElementById('escenario-juego').classList.add('oculto');
     document.getElementById('caja-chat-online').classList.add('oculto');
     document.getElementById('panel-online').classList.add('oculto');
     document.getElementById('menu-inicio').classList.remove('oculto');
-    document.getElementById('estado-conexion').innerText = "Awaiting operational synchronization...";
+    document.getElementById('estado-conexion').innerText = "Awaiting manual synchronization protocol...";
     document.getElementById('input-peer-id').value = '';
-}
-
-
-
-//Bloque 4: Sistema Multijugador y Chat en Tiempo Real
-// ENVIAR MENSAJES DE CHAT
-function evaluarTeclaChat(e) {
-    if(e.key === 'Enter') enviarMensajeChat();
-}
-
-// ENVIAR CHAT POR PUBNUB
-function enviarMensajeChat() {
-    const input = document.getElementById('input-msg-chat');
-    const msg = input.value.trim();
-    if(!msg || !pubnub) return;
-
-    agregarMensajePantalla(aliasPropio, msg);
     
-    pubnub.publish({
-        channel: miCanalRed,
-        message: { tipo: 'chat', emisor: aliasPropio, mensaje: msg }
-    });
-    input.value = '';
+    const btnId = document.getElementById('btn-crear-id');
+    if(btnId) {
+        btnId.disabled = false;
+        btnId.innerText = "⚡ GENERATE ID";
+    }
+    document.getElementById('mi-id').innerText = "OFFLINE // N/A";
 }
 
-function agregarMensajePantalla(autor, texto) {
-    const cajaMsgs = document.getElementById('chat-mensajes');
-    const nuevoMsg = document.createElement('div');
-    nuevoMsg.innerHTML = `<span>[${autor}]:</span> ${texto}`;
-    cajaMsgs.appendChild(nuevoMsg);
-    cajaMsgs.scrollTop = cajaMsgs.scrollHeight;
-}
-
-// TRANSMISIÓN MASIVA DE COORDENADAS POR SEGUNDO
-function enviarDatosRed() {
-    if (!pubnub || !miCanalRed) return;
-    
-    // Para no saturar el canal, mandamos datos sólo si la partida está corriendo
-    if (soyHost) {
-        pubnub.publish({
-            channel: miCanalRed,
-            message: { tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score }
-        });
-    } else {
-        pubnub.publish({
-            channel: miCanalRed,
-            message: { tipo: 'sync', p2Y: p2.y }
-        });
-    }
-}
-
-// PROCESADOR GENERAL DE MENSAJES PUBNUB
-function procesarDatosRed(data) {
-    if (data.tipo === 'handshake') {
-        aliasEnemigo = data.alias;
-        document.getElementById('label-p1').innerText = soyHost ? aliasPropio : aliasEnemigo;
-        document.getElementById('label-p2').innerText = soyHost ? aliasEnemigo : aliasPropio;
-        
-        if (soyHost) {
-            // El host responde con su alias al recibir el saludo del cliente
-            pubnub.publish({
-                channel: miCanalRed,
-                message: { tipo: 'handshake_reply', alias: aliasPropio }
-            });
-            document.getElementById('caja-chat-online').classList.remove('oculto');
-            arrancarEscenarioJuego();
-        }
-    }
-    if (data.tipo === 'handshake_reply') {
-        aliasEnemigo = data.alias;
-        document.getElementById('label-p1').innerText = soyHost ? aliasPropio : aliasEnemigo;
-        document.getElementById('label-p2').innerText = soyHost ? aliasEnemigo : aliasPropio;
-    }
-    if (data.tipo === 'chat') {
-        agregarMensajePantalla(data.emisor, data.mensaje);
-    }
-    if (data.tipo === 'start_match') {
-        partidaEnCurso = true;
-        pelota.vx = data.vx; pelota.vy = data.vy;
-        sonarTonoRetro(500, 0.15);
-    }
-    if (data.tipo === 'reset_match') {
-        p1.score = 0; p2.score = 0;
-        p1.y = canvas.height / 2 - paletaAlto / 2;
-        p2.y = canvas.height / 2 - paletaAlto / 2;
-        actualizarMarcador(); resetPelota(false);
-        partidaEnCurso = false; sonarTonoRetro(200, 0.2);
-    }
-    if (data.tipo === 'sync') {
-        if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
-        if (!soyHost) {
-            if (data.p1Y !== undefined) p1.y = data.p1Y;
-            if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
-            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
-        }
-    }
-}
-
-
-
-
-// Bloque 5: Motor Físico (Movimiento, IA y Colisiones)
-// CALCULADORA DE COORDENADAS E IMPACTOS
+// ==========================================
+// 4. MOTOR FÍSICO Y COLISIONES VECTORES
+// ==========================================
 function actualizar() {
-    // Control P1
-    if (modoActual !== 'online' || soyHost) {
-        if (teclas['w'] || teclas['W']) p1.y = Math.max(10, p1.y - 6);
-        if (teclas['s'] || teclas['S']) p1.y = Math.min(canvas.height - paletaAlto - 10, p1.y + 6);
-    }
-    // Control P2
-    if (modoActual === 'local' || (modoActual === 'online' && !soyHost)) {
+    if (teclas['w'] || teclas['W']) p1.y = Math.max(10, p1.y - 6);
+    if (teclas['s'] || teclas['S']) p1.y = Math.min(480 - paletaAlto - 10, p1.y + 6);
+
+    if (modoActual === 'local') {
         if (teclas['ArrowUp']) p2.y = Math.max(10, p2.y - 6);
-        if (teclas['ArrowDown']) p2.y = Math.min(canvas.height - paletaAlto - 10, p2.y + 6);
+        if (teclas['ArrowDown']) p2.y = Math.min(480 - paletaAlto - 10, p2.y + 6);
     }
 
-    // COMPORTAMIENTO TÁCTICO DE LA IA INTERACTIVA
     if (modoActual === 'ia') {
         let centroPaleta = p2.y + paletaAlto / 2;
-        if (pelota.vx > 0) { // Solo sigue la bola si va hacia ella
-            if (centroPaleta < pelota.y - 12) p2.y = Math.min(canvas.height - paletaAlto - 10, p2.y + velocidadIA);
+        if (pelota.vx > 0) {
+            if (centroPaleta < pelota.y - 12) p2.y = Math.min(480 - paletaAlto - 10, p2.y + velocidadIA);
             else if (centroPaleta > pelota.y + 12) p2.y = Math.max(10, p2.y - velocidadIA);
         }
     }
 
-    // FÍSICAS DE REBOTE DE LA PELOTA
-    if (partidaEnCurso && (modoActual !== 'online' || soyHost)) {
+    if (partidaEnCurso) {
         pelota.x += pelota.vx;
         pelota.y += pelota.vy;
 
-        if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= canvas.height) {
+        if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
             pelota.vy = -pelota.vy;
             sonarTonoRetro(300, 0.05);
         }
@@ -347,16 +189,15 @@ function actualizar() {
         }
 
         if (pelota.x < 0) { p2.score++; responderPunto(); }
-        else if (pelota.x > canvas.width) { p1.score++; responderPunto(); }
+        else if (pelota.x > 800) { p1.score++; responderPunto(); }
     }
-    enviarDatosRed();
 }
 
 function calcularReboteAngulo(paleta) {
     let impactoRelativo = (pelota.y - (paleta.y + paletaAlto / 2)) / (paletaAlto / 2);
     let anguloGiro = impactoRelativo * (Math.PI / 4);
     let direccion = pelota.vx > 0 ? -1 : 1;
-    let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3; // Aceleración arcade
+    let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3;
     
     pelota.vx = direccion * velocidadActual * Math.cos(anguloGiro);
     pelota.vy = velocidadActual * Math.sin(anguloGiro);
@@ -366,7 +207,7 @@ function calcularReboteAngulo(paleta) {
 function responderPunto() {
     actualizarMarcador();
     sonarTonoRetro(150, 0.3);
-    resetPelota(true); // Reinicia con saque instantáneo tras un gol
+    resetPelota(true); 
 }
 
 function actualizarMarcador() {
@@ -375,8 +216,8 @@ function actualizarMarcador() {
 }
 
 function resetPelota(autoLanzar = false) {
-    pelota.x = canvas.width / 2;
-    pelota.y = canvas.height / 2;
+    pelota.x = 800 / 2;
+    pelota.y = 480 / 2;
     if (autoLanzar) {
         pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
         pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
@@ -386,12 +227,12 @@ function resetPelota(autoLanzar = false) {
     }
 }
 
-//Bloque 6: Renderizado Gráfico Véctores y Oscilador de Sonido (Bucle de FPS)
-// DIBUJAR LOS ELEMENTOS CON SOMBRAS DE NEÓN
+// ==========================================
+// 5. RENDERIZADO GRÁFICO Y AUDIO 8-BITS
+// ==========================================
 function dibujar() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Línea central de red militar
     ctx.strokeStyle = 'rgba(0, 255, 102, 0.15)';
     ctx.lineWidth = 4;
     ctx.beginPath();
@@ -399,47 +240,38 @@ function dibujar() {
     ctx.lineTo(canvas.width / 2, canvas.height);
     ctx.stroke();
 
-    // Paletas Verdes Fósforo
     ctx.fillStyle = '#00ff66';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#00ff66';
     ctx.fillRect(p1.x, p1.y, paletaAncho, paletaAlto);
     ctx.fillRect(p2.x, p2.y, paletaAncho, paletaAlto);
 
-    // Pelota Amarilla Eléctrica
     ctx.fillStyle = '#ffcc00';
     ctx.shadowColor = '#ffcc00';
     ctx.beginPath();
     ctx.arc(pelota.x, pelota.y, pelota.radio, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0; // Desactivar sombra al terminar para optimizar rendimiento
+    ctx.shadowBlur = 0;
 }
 
-// GENERADOR DE BEEPS RETRO DE CONSOLA DE 8 BITS
 function sonarTonoRetro(frecuencia, duracion) {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    
-    osc.type = 'square'; // Onda cuadrada clásica de maquinita arcade
+    osc.type = 'square';
     osc.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
     gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duracion);
-    
     osc.connect(gain);
     gain.connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + duracion);
 }
 
-// BUCLE DE RENDERIZADO RECURSIVO A 60FPS
 function buclePrincipalJuego() {
-    if (!window.bucleActivo) return; // Frena el ciclo si volvimos al menú
+    if (!window.bucleActivo) return; 
     actualizar();
     dibujar();
     requestAnimationFrame(buclePrincipalJuego);
 }
-
-
-
 
