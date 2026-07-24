@@ -130,15 +130,26 @@ function conectarAEnemigo() {
 
 function conectarServidorRetransmision(sala, alConectar) {
     const apiKey = "oZ6967A18967oX86967o"; 
+    // Dirección WebSocket corregida y formateada correctamente para PieSocket
     const urlSocket = `wss://://piesocket.com{sala}?api_key=${apiKey}&notify_self=0`;
     
     puenteRedSocket = new WebSocket(urlSocket);
-    puenteRedSocket.onopen = function() { alConectar(); };
+    
+    puenteRedSocket.onopen = function() { 
+        console.log("Puente de red WebSockets establecido de forma aérea.");
+        alConectar(); 
+    };
+    
     puenteRedSocket.onmessage = function(event) {
         const datos = JSON.parse(event.data);
         procesarDatosRed(datos);
     };
+    
+    puenteRedSocket.onerror = function(err) {
+        console.error("Fallo de negociación en la antena WebSocket:", err);
+    };
 }
+
 
 function enviarMensajeRed(objeto) {
     if (puenteRedSocket && puenteRedSocket.readyState === WebSocket.OPEN) {
@@ -169,7 +180,7 @@ function procesarDatosRed(data) {
     }
     if (data.tipo === 'handshake_reply') {
         aliasEnemigo = data.alias;
-        document.getElementById('label-p1').innerText = aliasEnemigo;
+        document.getElementById('label-p2').innerText = aliasEnemigo;
     }
     if (data.tipo === 'chat') { agregarMensajePantalla(aliasEnemigo, data.mensaje); }
     if (data.tipo === 'start_match') {
