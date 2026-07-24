@@ -44,22 +44,44 @@ function seleccionarModo(modo) {
 }
 
 function arrancarEscenarioJuego() {
-    // Forzamos los estilos para apagar el menú y encender la arena
+    // 1. Apagamos el menú y encendemos la arena visualmente
     document.getElementById('menu-inicio').style.setProperty('display', 'none', 'important');
     document.getElementById('escenario-juego').style.setProperty('display', 'flex', 'important');
     
-    if(modoActual === 'online') {
-        document.getElementById('label-p1').innerText = soyHost ? aliasPropio : 'CONNECTING...';
-        document.getElementById('label-p2').innerText = soyHost ? 'CONNECTING...' : aliasPropio;
-        document.getElementById('btn-start-match').innerText = soyHost ? "🎮 START MATCH" : "⏳ AWAITING HOST START";
-        if(!soyHost) document.getElementById('btn-start-match').disabled = true;
+    // 2. VALIDACIÓN DE BOTÓN INMUTABLE PARA MODO ONLINE
+    if (modoActual === 'online') {
+        // Si el sistema detecta que tú fuiste el que generó el código...
+        if (window.esElCreador === true || soyHost === true) {
+            document.getElementById('label-p1').innerText = aliasPropio;
+            document.getElementById('label-p2').innerText = "REMOTE_PLAYER";
+            
+            // Forzamos el encendido del botón de inicio para el Creador
+            const btnStart = document.getElementById('btn-start-match');
+            btnStart.disabled = false;
+            btnStart.style.borderColor = "#00ff66";
+            btnStart.style.color = "#00ff66";
+            btnStart.innerText = "🎮 START MATCH";
+        } else {
+            // Si eres el invitado que se conectó...
+            document.getElementById('label-p1').innerText = "HOST_PLAYER";
+            document.getElementById('label-p2').innerText = aliasPropio;
+            
+            // Forzamos el bloqueo del botón para el Invitado
+            const btnStart = document.getElementById('btn-start-match');
+            btnStart.disabled = true;
+            btnStart.style.borderColor = "#3d1c66";
+            btnStart.style.color = "#497a53";
+            btnStart.innerText = "⏳ AWAITING HOST START";
+        }
     } else {
+        // Modos Locales o IA estándar
         document.getElementById('label-p1').innerText = aliasPropio;
         document.getElementById('label-p2').innerText = aliasEnemigo;
         document.getElementById('btn-start-match').disabled = false;
         document.getElementById('btn-start-match').innerText = "🎮 START MATCH";
     }
     
+    // 3. Inicializamos las físicas y el bucle a 60FPS
     resetPelota(false); 
     actualizarMarcador(); 
     dibujar(); 
@@ -69,6 +91,7 @@ function arrancarEscenarioJuego() {
         buclePrincipalJuego();
     }
 }
+
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
@@ -82,8 +105,13 @@ function activarNodoRed() {
         btn.innerText = "✔ ACTIVE";
         btn.disabled = true;
     }
+    
+    // Forzamos las banderas de creador de forma global e indestructible
     soyHost = true;
+    window.esElCreador = true; 
+    modoActual = 'online';
 }
+
 
 function conectarAEnemigo() {
     const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
