@@ -1,4 +1,4 @@
-//Bloque 1: Configuración Física de la Arena y Teclado
+//Parte 1: Dimensiones, Coordenadas y Captura de Teclado
 // ==========================================
 // 1. CONSTANTES Y CONFIGURACIÓN DEL LIENZO
 // ==========================================
@@ -31,7 +31,7 @@ let velocidadIA = 4.5;
 window.bucleActivo = false;
 
 
-// Parte 2: El Motor de Selección de Modo y Red WebSocket
+//Parte 2: Controladores del Menú, Selección de Modo y Cambio de Pantallas
 // ==========================================
 // 2. CONTROLADORES DEL MENÚ Y FLUJO ARCADE
 // ==========================================
@@ -74,11 +74,15 @@ function arrancarEscenarioJuego() {
     actualizarMarcador(); 
     dibujar(); 
 
-    // Forzamos el encendido del bucle de inmediato al entrar a la arena
     window.bucleActivo = true;
     buclePrincipalJuego();
 }
 
+
+//Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
+// ==========================================
+// 3. Antenas
+// ==========================================
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -136,9 +140,6 @@ function conectarServidorRetransmision(sala, alConectar) {
     };
 }
 
-
-//Bloque 3: Sincronización y Procesador de Señales Aéreas
-// TRANSMISIÓN MASIVA DE COORDENADAS (60 VECES POR SEGUNDO)
 function enviarMensajeRed(objeto) {
     if (puenteRedSocket && puenteRedSocket.readyState === WebSocket.OPEN) {
         puenteRedSocket.send(JSON.stringify(objeto));
@@ -152,6 +153,103 @@ function enviarDatosRed() {
     } else {
         enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
     }
+}
+
+//Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
+// ==========================================
+// 4. Procesamientos
+// ==========================================
+function procesarDatosRed(data) {
+    if (data.tipo === 'handshake') {
+        aliasEnemigo = data.alias;
+        document.getElementById('label-p2').innerText = aliasEnemigo;
+        enviarMensajeRed({ tipo: 'handshake_reply', alias: aliasPropio });
+        document.getElementById('caja-chat-online').classList.remove('oculto');
+        arrancarEscenarioJuego();
+    }
+    if (data.tipo === 'handshake_reply') {
+        aliasEnemigo = data.alias;
+        document.getElementById('label-p1').innerText = aliasEnemigo;
+    }
+    if (data.tipo === 'chat') { agregarMensajePantalla(aliasEnemigo, data.mensaje); }
+    if (data.tipo === 'start_match') {
+        partidaEnCurso = true;
+        pelota.vx = data.vx; pelota.vy = data.vy;
+        sonarTonoRetro(500, 0.15);
+    }
+    if (data.tipo === 'reset_match') { reiniciarPartidaCompletaLocal(); }
+    if (data.tipo === 'sync') {
+        if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
+        if (!soyHost) {
+            if (data.p1Y !== undefined) p1.y = data.p1Y;
+            if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
+            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
+            if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
+        }
+    }
+}
+
+function iniciarPartidaFisica() {
+    if(partidaEnCurso) return;
+    partidaEnCurso = true;
+    pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
+    pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
+    sonarTonoRetro(500, 0.15);
+
+    if (modoActual === 'online' && soyHost) {
+        enviarMensajeRed({ tipo: 'start_match', vx: pelota.vx, vy: pelota.vy });
+    }
+}
+
+function reiniciarPartidaCompleta() {
+    reiniciarPartidaCompletaLocal();
+    if (modoActual === 'online') { enviarMensajeRed({ tipo: 'reset_match' }); }
+}
+
+// RESTABLECE LOS VALORES LOCALES A CERO
+function reiniciarPartidaCompletaLocal() {
+    p1.score = 0; p2.score = 0;
+    p1.y = 480 / 2 - paletaAlto / 2;
+    p2.y = 480 / 2 - paletaAlto / 2;
+    actualizarMarcador();
+    resetPelota(false);
+    partidaEnCurso = false;
+    sonarTonoRetro(200, 0.2);
+}
+
+function volverAlMenuInicial() {
+    partidaEnCurso = false;
+    window.bucleActivo = false; 
+    if (puenteRedSocket) { puenteRedSocket.close(); puenteRedSocket = null; }
+    reiniciarPartidaCompletaLocal();
+
+    document.getElementById('escenario-juego').style.setProperty('display', 'none', 'important');
+    document.getElementById('menu-inicio').style.setProperty('display', 'flex', 'important');
+    document.getElementById('caja-chat-online').classList.add('oculto');
+    document.getElementById('panel-online').classList.add('oculto');
+    document.getElementById('estado-conexion').innerText = "Awaiting manual synchronization protocol...";
+    document.getElementById('input-peer-id').value = '';
+    
+    const btnId = document.getElementById('btn-crear-id');
+    if(btnId) { btnId.disabled = false; btnId.innerText = "⚡ GENERATE ID"; }
+    document.getElementById('mi-id').innerText = "OFFLINE // N/A";
+}
+
+function evaluarTeclaChat(e) { if(e.key === 'Enter') enviarMensajeChat(); }
+function enviarMensajeChat() {
+    const input = document.getElementById('input-msg-chat');
+    const msg = input.value.trim();
+    if(!msg || !puenteRedSocket) return;
+    agregarMensajePantalla(aliasPropio, msg);
+    enviarMensajeRed({ tipo: 'chat', mensaje: msg });
+    input.value = '';
+}
+function agregarMensajePantalla(autor, texto) {
+    const cajaMsgs = document.getElementById('chat-mensajes');
+    const nuevoMsg = document.createElement('div');
+    nuevoMsg.innerHTML = `<span>[${autor}]:</span> ${texto}`;
+    cajaMsgs.appendChild(nuevoMsg);
+    cajaMsgs.scrollTop = cajaMsgs.scrollHeight;
 }
 
 function procesarDatosRed(data) {
@@ -184,16 +282,9 @@ function procesarDatosRed(data) {
     }
 }
 
-
-
-//Bloque 4: Gestión de Pantallas, Saques y Caja de Chat
-// ==========================================
-// 4. CONTROLADORES DEL FLUJO GRÁFICO
-// ==========================================
 function iniciarPartidaFisica() {
     if(partidaEnCurso) return;
     partidaEnCurso = true;
-    
     pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
     pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
     sonarTonoRetro(500, 0.15);
@@ -208,6 +299,7 @@ function reiniciarPartidaCompleta() {
     if (modoActual === 'online') { enviarMensajeRed({ tipo: 'reset_match' }); }
 }
 
+// RESTABLECE LOS VALORES LOCALES A CERO
 function reiniciarPartidaCompletaLocal() {
     p1.score = 0; p2.score = 0;
     p1.y = 480 / 2 - paletaAlto / 2;
@@ -221,27 +313,18 @@ function reiniciarPartidaCompletaLocal() {
 function volverAlMenuInicial() {
     partidaEnCurso = false;
     window.bucleActivo = false; 
-    
-    if (puenteRedSocket) {
-        puenteRedSocket.close();
-        puenteRedSocket = null;
-    }
-
+    if (puenteRedSocket) { puenteRedSocket.close(); puenteRedSocket = null; }
     reiniciarPartidaCompletaLocal();
 
     document.getElementById('escenario-juego').style.setProperty('display', 'none', 'important');
     document.getElementById('menu-inicio').style.setProperty('display', 'flex', 'important');
-    
     document.getElementById('caja-chat-online').classList.add('oculto');
     document.getElementById('panel-online').classList.add('oculto');
     document.getElementById('estado-conexion').innerText = "Awaiting manual synchronization protocol...";
     document.getElementById('input-peer-id').value = '';
     
     const btnId = document.getElementById('btn-crear-id');
-    if(btnId) {
-        btnId.disabled = false;
-        btnId.innerText = "⚡ GENERATE ID";
-    }
+    if(btnId) { btnId.disabled = false; btnId.innerText = "⚡ GENERATE ID"; }
     document.getElementById('mi-id').innerText = "OFFLINE // N/A";
 }
 
@@ -262,7 +345,7 @@ function agregarMensajePantalla(autor, texto) {
     cajaMsgs.scrollTop = cajaMsgs.scrollHeight;
 }
 
-//Bloque 5: Núcleo Físico, Rebotes y Renderizado de Sombras Gráficas
+// Parte 5: Motor de Rebotes, Inteligencia Artificial, Pintado y Audio
 // ==========================================
 // 5. MOTOR FÍSICO Y ACTUALIZACIONES DE POSICIÓN
 // ==========================================
