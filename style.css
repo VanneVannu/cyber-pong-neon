@@ -225,3 +225,7 @@ body {
 .chat-input-area button:hover { background: #00ff66; color: #000; }
 
 .controles-ayuda { margin-top: 15px; font-size: 0.85rem; color: #497a53; }
+
+/* FUERZA EL ESTADO INICIAL DE ARRANQUE VISUAL */
+#menu-inicio { display: flex !important; }
+#escenario-juego { display: none !important; }
