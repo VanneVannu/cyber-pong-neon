@@ -73,17 +73,26 @@ function arrancarEscenarioJuego() {
 // SIMULADOR SOBERANO DE RED LOCAL
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
+    
+    // Generamos el ID local de simulación instantánea
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
 
+    // Pintamos el código amarillo en pantalla
     document.getElementById('mi-id').innerText = miPeerId;
     document.getElementById('estado-conexion').innerText = "VIRTUAL NODE STABLE. COPY CODE.";
     
-    btn.innerText = "✔ ACTIVE";
-    btn.disabled = true;
+    // Cambiamos el estado del botón a activo
+    if (btn) {
+        btn.innerText = "✔ ACTIVE";
+        btn.disabled = true;
+    }
+    
+    // IMPORTANTE: Aquí NO forzamos el arranque del escenario de juego.
+    // El sistema se quedará quieto esperando en el menú hasta que interactúes.
     soyHost = true;
-    modoActual = 'online';
 }
+
 
 function conectarAEnemigo() {
     const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
