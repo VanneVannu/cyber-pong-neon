@@ -45,9 +45,11 @@ function seleccionarModo(modo) {
 }
 
 function arrancarEscenarioJuego() {
-    document.getElementById('menu-inicio').classList.add('oculto');
-    document.getElementById('escenario-juego').classList.remove('oculto');
+    // 1. Rompemos las reglas estrictas del CSS usando estilos directos en línea
+    document.getElementById('menu-inicio').style.setProperty('display', 'none', 'important');
+    document.getElementById('escenario-juego').style.setProperty('display', 'flex', 'important');
     
+    // 2. Cargamos las etiquetas de texto correspondientes al modo
     if(modoActual === 'online') {
         document.getElementById('label-p1').innerText = soyHost ? aliasPropio : 'CONNECTING...';
         document.getElementById('label-p2').innerText = soyHost ? 'CONNECTING...' : aliasPropio;
@@ -69,6 +71,7 @@ function arrancarEscenarioJuego() {
         buclePrincipalJuego();
     }
 }
+
 
 // SIMULADOR SOBERANO DE RED LOCAL
 function activarNodoRed() {
@@ -146,10 +149,12 @@ function volverAlMenuInicial() {
     p1.y = 480 / 2 - paletaAlto / 2;
     p2.y = 480 / 2 - paletaAlto / 2;
 
-    document.getElementById('escenario-juego').classList.add('oculto');
+    // Revertimos el truco visual para volver al menú de selección
+    document.getElementById('escenario-juego').style.setProperty('display', 'none', 'important');
+    document.getElementById('menu-inicio').style.setProperty('display', 'flex', 'important');
+    
     document.getElementById('caja-chat-online').classList.add('oculto');
     document.getElementById('panel-online').classList.add('oculto');
-    document.getElementById('menu-inicio').classList.remove('oculto');
     document.getElementById('estado-conexion').innerText = "Awaiting manual synchronization protocol...";
     document.getElementById('input-peer-id').value = '';
     
@@ -160,6 +165,7 @@ function volverAlMenuInicial() {
     }
     document.getElementById('mi-id').innerText = "OFFLINE // N/A";
 }
+
 
 // ==========================================
 // 4. MOTOR FÍSICO Y COLISIONES VECTORES
@@ -283,4 +289,3 @@ function buclePrincipalJuego() {
     dibujar();
     requestAnimationFrame(buclePrincipalJuego);
 }
-
