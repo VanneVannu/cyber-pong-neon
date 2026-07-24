@@ -5,7 +5,6 @@
 const canvas = document.getElementById('lienzo-pong');
 const ctx = canvas.getContext('2d');
 
-// VARIABLES DE SELECCIÓN DE MODO Y CONTROL GENERAL
 let modoActual = '';
 let miPeerId = '';
 let soyHost = false;
@@ -14,161 +13,42 @@ let partidaEnCurso = false;
 let aliasPropio = 'PLAYER_1';
 let aliasEnemigo = 'COMP_CORE';
 
-// CANAL DE TRANSMISIÓN MULTIJUGADOR DIRECTO (WebSockets Relay)
 let puenteRedSocket = null;
 let nombreSalaVirtual = '';
 
-// DIMENSIONES DE LAS RAQUETAS Y LA BOLA
 const paletaAncho = 12, paletaAlto = 90;
 const p1 = { x: 20, y: 480 / 2 - paletaAlto / 2, score: 0 };
 const p2 = { x: 800 - 20 - paletaAncho, y: 480 / 2 - paletaAlto / 2, score: 0 };
 const pelota = { x: 800 / 2, y: 480 / 2, radio: 7, vx: 0, vy: 0, velocidadBase: 6 };
 
-// CAPTURA DE TECLADO GLOBAL
 const teclas = {};
 window.addEventListener('keydown', e => teclas[e.key] = true);
 window.addEventListener('keyup', e => teclas[e.key] = false);
 
-// VELOCIDADES DE REACCIÓN PARA LA INTELIGENCIA ARTIFICIAL
 const IA_CONFIG = { easy: 2.5, medium: 4.5, hard: 7.5 };
 let velocidadIA = 4.5;
 
-// CONTROL DE REDIBUJADO A 60 FPS
 window.bucleActivo = false;
 
-// Bloque 2: El Motor de Antena Multijugador (WebSockets)
+
+// Parte 2: El Motor de Selección de Modo y Red WebSocket
 // ==========================================
-// 2. MOTOR DE RED MULTIJUGADOR SINCRONIZADO
+// 2. CONTROLADORES DEL MENÚ Y FLUJO ARCADE
 // ==========================================
-function activarNodoRed() {
-    const btn = document.getElementById('btn-crear-id');
-    const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
-    miPeerId = "CP-" + hash;
-    nombreSalaVirtual = miPeerId; 
-
-    document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "CONNECTING ANTENNA TO CLOUD...";
-    
-    // Enganchamos el puente virtual a la nube de WebSockets
-    conectarServidorRetransmision(nombreSalaVirtual, () => {
-        document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. COPY CODE.";
-        if (btn) {
-            btn.innerText = "✔ ACTIVE";
-            btn.disabled = true;
-        }
-        soyHost = true;
-        window.esElCreador = true; 
-        modoActual = 'online';
-    });
-}
-
-function conectarAEnemigo() {
-    const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
-    if (!idEnemigo) {
-        alert("🚨 PLEASE ENTER A VALID ENEMY ID");
-        return;
-    }
-
-    document.getElementById('estado-conexion').innerText = "CONNECTING TO TARGET NODE...";
-    nombreSalaVirtual = idEnemigo;
-    soyHost = false;
-    window.esElCreador = false;
-    modoActual = 'online';
+function seleccionarModo(modo) {
+    modoActual = modo;
+    velocidadIA = IA_CONFIG[document.getElementById('select-diff').value];
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_1';
 
-    conectarServidorRetransmision(nombreSalaVirtual, () => {
-        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-        
-        // Enviamos nuestro Alias para que la otra pantalla se actualice al instante
-        enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
-        
-        setTimeout(() => {
-            document.getElementById('caja-chat-online').classList.remove('oculto');
-            arrancarEscenarioJuego();
-        }, 500);
-    });
-}
-
-function conectarServidorRetransmision(sala, alConectar) {
-    // Usamos el retransmisor público de PieSocket para WebSockets directos sin bloqueos de Render
-    const apiKey = "oZ6967A18967oX86967o"; 
-    const urlSocket = `wss://://piesocket.com{sala}?api_key=${apiKey}&notify_self=0`;
-    
-    puenteRedSocket = new WebSocket(urlSocket);
-    
-    puenteRedSocket.onopen = function() {
-        console.log("Cable virtual conectado a la sala:", sala);
-        alConectar();
-    };
-    
-    puenteRedSocket.onmessage = function(event) {
-        const datos = JSON.parse(event.data);
-        procesarDatosRed(datos);
-    };
-}
-
-function enviarMensajeRed(objeto) {
-    if (puenteRedSocket && puenteRedSocket.readyState === WebSocket.OPEN) {
-        puenteRedSocket.send(JSON.stringify(objeto));
-    }
-}
-
-//Bloque 3: Sincronización y Procesador de Señales Aéreas
-// TRANSMISIÓN MASIVA DE COORDENADAS (60 VECES POR SEGUNDO)
-function enviarDatosRed() {
-    if (modoActual !== 'online' || !puenteRedSocket) return;
-    
-    if (soyHost) {
-        // El Creador le clona al Invitado la bola, su paleta izquierda y los puntos
-        enviarMensajeRed({ 
-            tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso 
-        });
+    if (modo === 'online') {
+        document.getElementById('panel-online').classList.remove('oculto');
     } else {
-        // El Invitado sólo le manda al creador dónde tiene su paleta derecha
-        enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
-    }
-}
-
-// PROCESADOR DE SEÑALES RECIBIDAS DESDE LA RED POR EL AIRE
-function procesarDatosRed(data) {
-    if (data.tipo === 'handshake') {
-        aliasEnemigo = data.alias;
-        document.getElementById('label-p2').innerText = aliasEnemigo;
-        enviarMensajeRed({ tipo: 'handshake_reply', alias: aliasPropio });
-        document.getElementById('caja-chat-online').classList.remove('oculto');
+        if (modo === 'local') aliasEnemigo = 'PLAYER_2';
+        if (modo === 'ia') aliasEnemigo = 'INFECTED_IA';
         arrancarEscenarioJuego();
     }
-    if (data.tipo === 'handshake_reply') {
-        aliasEnemigo = data.alias;
-        document.getElementById('label-p1').innerText = aliasEnemigo;
-    }
-    if (data.tipo === 'chat') {
-        agregarMensajePantalla(aliasEnemigo, data.mensaje);
-    }
-    if (data.tipo === 'start_match') {
-        partidaEnCurso = true;
-        pelota.vx = data.vx; pelota.vy = data.vy;
-        sonarTonoRetro(500, 0.15);
-    }
-    if (data.tipo === 'reset_match') {
-        reiniciarPartidaCompletaLocal();
-    }
-    if (data.tipo === 'sync') {
-        if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
-        if (!soyHost) {
-            if (data.p1Y !== undefined) p1.y = data.p1Y;
-            if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
-            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
-            if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
-        }
-    }
 }
 
-
-//Bloque 4: Gestión de Pantallas, Saques y Caja de Chat
-// ==========================================
-// 4. CONTROLADORES DEL FLUJO GRÁFICO
-// ==========================================
 function arrancarEscenarioJuego() {
     document.getElementById('menu-inicio').style.setProperty('display', 'none', 'important');
     document.getElementById('escenario-juego').style.setProperty('display', 'flex', 'important');
@@ -194,12 +74,122 @@ function arrancarEscenarioJuego() {
     actualizarMarcador(); 
     dibujar(); 
 
-    if (!window.bucleActivo) {
-        window.bucleActivo = true;
-        buclePrincipalJuego();
+    // Forzamos el encendido del bucle de inmediato al entrar a la arena
+    window.bucleActivo = true;
+    buclePrincipalJuego();
+}
+
+function activarNodoRed() {
+    const btn = document.getElementById('btn-crear-id');
+    const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
+    miPeerId = "CP-" + hash;
+    nombreSalaVirtual = miPeerId;
+
+    document.getElementById('mi-id').innerText = miPeerId;
+    document.getElementById('estado-conexion').innerText = "CONNECTING ANTENNA...";
+    
+    conectarServidorRetransmision(nombreSalaVirtual, () => {
+        document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. COPY CODE.";
+        if (btn) {
+            btn.innerText = "✔ ACTIVE";
+            btn.disabled = true;
+        }
+        soyHost = true;
+        window.esElCreador = true; 
+        modoActual = 'online';
+    });
+}
+
+function conectarAEnemigo() {
+    const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
+    if (!idEnemigo) {
+        alert("🚨 PLEASE ENTER A VALID ENEMY ID");
+        return;
+    }
+
+    document.getElementById('estado-conexion').innerText = "CONNECTING...";
+    nombreSalaVirtual = idEnemigo;
+    soyHost = false;
+    window.esElCreador = false;
+    modoActual = 'online';
+    aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_1';
+
+    conectarServidorRetransmision(nombreSalaVirtual, () => {
+        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
+        enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
+        setTimeout(() => {
+            document.getElementById('caja-chat-online').classList.remove('oculto');
+            arrancarEscenarioJuego();
+        }, 500);
+    });
+}
+
+function conectarServidorRetransmision(sala, alConectar) {
+    const apiKey = "oZ6967A18967oX86967o"; 
+    const urlSocket = `wss://://piesocket.com{sala}?api_key=${apiKey}&notify_self=0`;
+    
+    puenteRedSocket = new WebSocket(urlSocket);
+    puenteRedSocket.onopen = function() { alConectar(); };
+    puenteRedSocket.onmessage = function(event) {
+        const datos = JSON.parse(event.data);
+        procesarDatosRed(datos);
+    };
+}
+
+
+//Bloque 3: Sincronización y Procesador de Señales Aéreas
+// TRANSMISIÓN MASIVA DE COORDENADAS (60 VECES POR SEGUNDO)
+function enviarMensajeRed(objeto) {
+    if (puenteRedSocket && puenteRedSocket.readyState === WebSocket.OPEN) {
+        puenteRedSocket.send(JSON.stringify(objeto));
     }
 }
 
+function enviarDatosRed() {
+    if (modoActual !== 'online' || !puenteRedSocket) return;
+    if (soyHost) {
+        enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
+    } else {
+        enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
+    }
+}
+
+function procesarDatosRed(data) {
+    if (data.tipo === 'handshake') {
+        aliasEnemigo = data.alias;
+        document.getElementById('label-p2').innerText = aliasEnemigo;
+        enviarMensajeRed({ tipo: 'handshake_reply', alias: aliasPropio });
+        document.getElementById('caja-chat-online').classList.remove('oculto');
+        arrancarEscenarioJuego();
+    }
+    if (data.tipo === 'handshake_reply') {
+        aliasEnemigo = data.alias;
+        document.getElementById('label-p1').innerText = aliasEnemigo;
+    }
+    if (data.tipo === 'chat') { agregarMensajePantalla(aliasEnemigo, data.mensaje); }
+    if (data.tipo === 'start_match') {
+        partidaEnCurso = true;
+        pelota.vx = data.vx; pelota.vy = data.vy;
+        sonarTonoRetro(500, 0.15);
+    }
+    if (data.tipo === 'reset_match') { reiniciarPartidaCompletaLocal(); }
+    if (data.tipo === 'sync') {
+        if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
+        if (!soyHost) {
+            if (data.p1Y !== undefined) p1.y = data.p1Y;
+            if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
+            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
+            if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
+        }
+    }
+}
+
+
+
+//Bloque 4: Gestión de Pantallas, Saques y Caja de Chat
+// ==========================================
+// 4. CONTROLADORES DEL FLUJO GRÁFICO
+// ==========================================
 function iniciarPartidaFisica() {
     if(partidaEnCurso) return;
     partidaEnCurso = true;
@@ -215,9 +205,7 @@ function iniciarPartidaFisica() {
 
 function reiniciarPartidaCompleta() {
     reiniciarPartidaCompletaLocal();
-    if (modoActual === 'online') {
-        enviarMensajeRed({ tipo: 'reset_match' });
-    }
+    if (modoActual === 'online') { enviarMensajeRed({ tipo: 'reset_match' }); }
 }
 
 function reiniciarPartidaCompletaLocal() {
@@ -257,21 +245,15 @@ function volverAlMenuInicial() {
     document.getElementById('mi-id').innerText = "OFFLINE // N/A";
 }
 
-// SISTEMA DE ENVÍO DE CHAT
-function evaluarTeclaChat(e) {
-    if(e.key === 'Enter') enviarMensajeChat();
-}
-
+function evaluarTeclaChat(e) { if(e.key === 'Enter') enviarMensajeChat(); }
 function enviarMensajeChat() {
     const input = document.getElementById('input-msg-chat');
     const msg = input.value.trim();
     if(!msg || !puenteRedSocket) return;
-
     agregarMensajePantalla(aliasPropio, msg);
     enviarMensajeRed({ tipo: 'chat', mensaje: msg });
     input.value = '';
 }
-
 function agregarMensajePantalla(autor, texto) {
     const cajaMsgs = document.getElementById('chat-mensajes');
     const nuevoMsg = document.createElement('div');
@@ -322,7 +304,6 @@ function actualizar() {
         if (pelota.x < 0) { p2.score++; responderPunto(); }
         else if (pelota.x > 800) { p1.score++; responderPunto(); }
     }
-    
     enviarDatosRed();
 }
 
@@ -360,7 +341,6 @@ function resetPelota(autoLanzar = false) {
     }
 }
 
-// PINTAR LOS ELEMENTOS RETRO CON SOMBRAS EN EL CANVAS
 function dibujar() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
