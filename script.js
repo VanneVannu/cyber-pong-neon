@@ -489,11 +489,38 @@ function actualizar() {
 }
 
 
+//Versión que vacía el satélite de internet en cada anotación
 function responderPunto() {
     actualizarMarcador();
-    sonarTonoRetro(150, 0.3); // Tono grave de anotación/pérdida
+    sonarTonoRetro(150, 0.3); // Tono grave de anotación
+    
+    // FILTRO DE TRÁFICO DE EMERGENCIA: Borramos los paquetes viejos del servidor al meter gol
+    if (modoActual === 'online' && soyHost) {
+        fetch(`${URL_SERVIDOR}/limpiar-sala`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ salaId: nombreSalaVirtual })
+        })
+        .then(() => {
+            // Una vez limpia la red, le avisamos al invitado que la bola se resetea al centro
+            enviarMensajeRed({ 
+                tipo: 'sync', 
+                p1Y: p1.y, 
+                pelotaX: 800 / 2, 
+                pelotaY: 480 / 2, 
+                vx: 0, 
+                vy: 0, 
+                s1: p1.score, 
+                s2: p2.score, 
+                corriendo: false 
+            });
+        })
+        .catch(e => console.log("Reajustando canal de red..."));
+    }
+    
     resetPelota(true); // Reinicia con saque automático inmediato
 }
+
 
 function actualizarMarcador() {
     document.getElementById('score-p1').innerText = p1.score.toString().padStart(2, '0');
