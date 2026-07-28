@@ -283,11 +283,25 @@ function procesarDatosRed(data) {
         agregarMensajePantalla(aliasEnemigo, data.mensaje); 
     }
     if (data.tipo === 'start_match') {
-        // Activación inmediata del saque de la pelota para el segundo jugador
-        partidaEnCurso = true;
-        pelota.x = data.px; pelota.y = data.py;
-        pelota.vx = data.vx; pelota.vy = data.vy;
-        sonarTonoRetro(500, 0.15);
+        // REPARADO: Si la pelota estaba estática, forzamos su tracción física inmediata
+        if (!partidaEnCurso) {
+            partidaEnCurso = true;
+            pelota.x = data.px; 
+            pelota.y = data.py;
+            pelota.vx = data.vx; 
+            pelota.vy = data.vy;
+            sonarTonoRetro(500, 0.15);
+            // El invitado le avisa al host que ya capturó el bit de energía
+            enviarMensajeRed({ tipo: 'start_match_confirm' });
+        }
+    }
+    if (data.tipo === 'start_match_confirm') {
+        // El Host recibe la confirmación y apaga el bucle repetitivo del saque
+        if (window.relojBucleSaque) {
+            clearInterval(window.relojBucleSaque);
+            window.relojBucleSaque = null;
+            console.log("Red: Conexión simétrica de pelota establecida con éxito.");
+        }
     }
     if (data.tipo === 'reset_match') { 
         reiniciarPartidaCompletaLocal(); 
@@ -297,8 +311,6 @@ function procesarDatosRed(data) {
         if (!soyHost) {
             if (data.p1Y !== undefined) p1.y = data.p1Y;
             if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
-            
-            // REPARADO: Si el Host recalculó una posición por un raquetazo, alineamos la bola del Invitado
             if (data.pelotaX !== undefined) {
                 pelota.x = data.pelotaX;
                 pelota.y = data.pelotaY;
@@ -312,17 +324,33 @@ function procesarDatosRed(data) {
 
 
 function iniciarPartidaFisica() {
-    if(partidaEnCurso) return;
+    if (partidaEnCurso) return;
     partidaEnCurso = true;
     
-    // Calculamos el vector de saque inicial
+    // Calculamos los vectores base de la pelota
     pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
     pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
     sonarTonoRetro(500, 0.15);
 
-    // Le transmitimos los vectores exactos de arranque al invitado para que su bola clonada copie la trayectoria exacta
     if (modoActual === 'online' && soyHost) {
-        enviarMensajeRed({ tipo: 'start_match', vx: pelota.vx, vy: pelota.vy });
+        // ANCLA DE RED PERSISTENTE: Creamos un bucle que bombardea el saque cada 100ms 
+        // hasta que el invitado responda o la pelota se mueva de verdad.
+        if (window.relojBucleSaque) clearInterval(window.relojBucleSaque);
+        
+        window.relojBucleSaque = setInterval(() => {
+            if (!partidaEnCurso) {
+                clearInterval(window.relojBucleSaque);
+                return;
+            }
+            console.log("Satélite: Retransmitiendo ráfaga de saque inicial...");
+            enviarMensajeRed({ 
+                tipo: 'start_match', 
+                px: pelota.x, 
+                py: pelota.y, 
+                vx: pelota.vx, 
+                vy: pelota.vy 
+            });
+        }, 100);
     }
 }
 
@@ -503,10 +531,14 @@ function actualizar() {
 
 //Versión que vacía el satélite de internet en cada anotación
 function responderPunto() {
-    actualizarMarcador();
-    sonarTonoRetro(150, 0.3); // Tono grave de anotación
+    if (window.relojBucleSaque) {
+        clearInterval(window.relojBucleSaque);
+        window.relojBucleSaque = null;
+    }
     
-    // FILTRO DE TRÁFICO DE EMERGENCIA: Borramos los paquetes viejos del servidor al meter gol
+    actualizarMarcador();
+    sonarTonoRetro(150, 0.3); 
+    
     if (modoActual === 'online' && soyHost) {
         fetch(`${URL_SERVIDOR}/limpiar-sala`, {
             method: 'POST',
@@ -514,7 +546,6 @@ function responderPunto() {
             body: JSON.stringify({ salaId: nombreSalaVirtual })
         })
         .then(() => {
-            // Una vez limpia la red, le avisamos al invitado que la bola se resetea al centro
             enviarMensajeRed({ 
                 tipo: 'sync', 
                 p1Y: p1.y, 
@@ -527,10 +558,10 @@ function responderPunto() {
                 corriendo: false 
             });
         })
-        .catch(e => console.log("Reajustando canal de red..."));
+        .catch(e => console.log("Sincronizando casillero de anotación..."));
     }
     
-    resetPelota(true); // Reinicia con saque automático inmediato
+    resetPelota(false); // Cambiado a false para que la bola espere el botón de START MATCH del creador
 }
 
 
