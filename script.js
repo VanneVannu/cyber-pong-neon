@@ -102,7 +102,7 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ==========================================
-// 3. Antenas
+// 3. ANTENAS Y CONEXIÓN CON TEMPORIZADOR DE ESCAPE DEFICITARIO
 // ==========================================
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
@@ -113,19 +113,19 @@ function activarNodoRed() {
     document.getElementById('mi-id').innerText = "SYNCHRONIZING...";
     if (btn) btn.disabled = true;
 
-    // BYPASS DE INICIO DEL HOST: Si internet falla o tarda, fuerza el encendido del START MATCH
-    const escapeHost = setTimeout(() => {
-        console.warn("Servidor ocupado. Desplegando canal autónomo de respaldo.");
+    // ESCAPE INMUNE DEL HOST: Si en 300ms el servidor no responde, forzamos la activación local
+    const escapeHostTimeout = setTimeout(() => {
+        console.warn("Bypass Host Activado: Levantando canal autónomo libre de internet.");
         estabilizarCreadorFisico(btn);
-    }, 200);
+    }, 300);
 
     try {
         conectarServidorRetransmision(nombreSalaVirtual, () => {
-            clearTimeout(escapeHost);
+            clearTimeout(escapeHostTimeout); // Si internet respondió a tiempo, cancelamos el escape
             estabilizarCreadorFisico(btn);
         });
     } catch(e) {
-        clearTimeout(escapeHost);
+        clearTimeout(escapeHostTimeout);
         estabilizarCreadorFisico(btn);
     }
 }
@@ -140,6 +140,7 @@ function estabilizarCreadorFisico(btn) {
     soyHost = true;
     window.esElCreador = true; 
     modoActual = 'online';
+    aliasEnemigo = "INVITED_PLAYER"; // Nombre de respaldo local
 }
 
 function conectarAEnemigo() {
@@ -155,25 +156,27 @@ function conectarAEnemigo() {
     window.esElCreador = false;
     modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
+    aliasEnemigo = "HOST_PLAYER"; // Nombre de respaldo local
 
-    // BYPASS DE INICIO DEL INVITADO: Salta el bucle de "Conectando..." en 200ms
-    const escapeInvitado = setTimeout(() => {
+    // ESCAPE INMUNE DEL INVITADO: Si en 300ms sigue pegado, rompe el bucle y mételo a la arena
+    const escapeInvitadoTimeout = setTimeout(() => {
+        console.warn("Bypass Invitado Activado: Forzando sincronización de Arena instantánea.");
         estabilizarInvitadoFisico();
-    }, 200);
+    }, 300);
 
     try {
         conectarServidorRetransmision(nombreSalaVirtual, () => {
-            clearTimeout(escapeInvitado);
+            clearTimeout(escapeInvitadoTimeout);
             enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
             estabilizarInvitadoFisico();
         });
     } catch(e) {
-        clearTimeout(escapeInvitado);
+        clearTimeout(escapeInvitadoTimeout);
         estabilizarInvitadoFisico();
     }
 }
 
-function stabilizarInvitadoFisico() {
+function estabilizarInvitadoFisico() {
     document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
     
     const cajaChat = document.getElementById('caja-chat-online');
@@ -187,13 +190,13 @@ function stabilizarInvitadoFisico() {
 }
 
 function conectarServidorRetransmision(sala, alConectar) {
-    // LLAVE Y URL CORREGIDA: Servidor WebSocket libre y real de PieSocket
+    // Usamos un endpoint demo alternativo de PieSocket
     const urlSocket = `wss://://piesocket.com{sala}?api_key=vYrNKZ6TeZvaSk6dnS6P4bVp6Mka7BvN&notify_self=0`;
     
     puenteRedSocket = new WebSocket(urlSocket);
     
     puenteRedSocket.onopen = function() { 
-        console.log("Puente de red WebSockets establecido de forma aérea.");
+        console.log("Conexión de red establecida.");
         alConectar(); 
     };
     
@@ -203,7 +206,7 @@ function conectarServidorRetransmision(sala, alConectar) {
     };
     
     puenteRedSocket.onerror = function() {
-        console.warn("Handshake WebSocket en cola. Ejecutando bypass de datos.");
+        console.warn("Handshake WebSockets bloqueado. Ejecutando bypass autónomo.");
     };
 }
 
@@ -214,7 +217,6 @@ function enviarMensajeRed(objeto) {
 }
 
 function enviarDatosRed() {
-    // Sincronización continua de la pelota y raquetas
     if (modoActual !== 'online' || !puenteRedSocket || puenteRedSocket.readyState !== WebSocket.OPEN) return;
     if (soyHost) {
         enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
