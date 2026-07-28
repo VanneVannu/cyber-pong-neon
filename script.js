@@ -270,9 +270,7 @@ function procesarDatosRed(data) {
     }
     if (data.tipo === 'handshake_reply') {
         aliasEnemigo = data.alias;
-        // CORREGIDO: El invitado pinta al host en el lado izquierdo
         document.getElementById('label-p1').innerText = aliasEnemigo;
-        // REPARADO: El invitado también despliega el chat y entra a la arena de inmediato
         document.getElementById('caja-chat-online').classList.remove('oculto');
         arrancarEscenarioJuego();
     }
@@ -284,14 +282,25 @@ function procesarDatosRed(data) {
         pelota.vx = data.vx; pelota.vy = data.vy;
         sonarTonoRetro(500, 0.15);
     }
-    if (data.tipo === 'reset_match') { reiniciarPartidaCompletaLocal(); }
+    if (data.tipo === 'reset_match') { 
+        reiniciarPartidaCompletaLocal(); 
+    }
     if (data.tipo === 'sync') {
         if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
         if (!soyHost) {
             if (data.p1Y !== undefined) p1.y = data.p1Y;
             if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
+            // CAPTURA DE VELOCIDAD FORZADA: Evita el congelamiento en la pantalla del oponente
+            if (data.vx !== undefined) { pelota.vx = data.vx; pelota.vy = data.vy; }
             if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
-            if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
+            if (data.corriendo !== undefined) {
+                partidaEnCurso = data.corriendo;
+                // Desbloqueo de seguridad: si el Host reinicia la partida, liberamos la interfaz del Invitado
+                if (!partidaEnCurso) {
+                    document.getElementById('btn-start-match').disabled = true;
+                    document.getElementById('btn-start-match').innerText = "⏳ AWAITING HOST START";
+                }
+            }
         }
     }
 }
@@ -384,6 +393,45 @@ function agregarMensajePantalla(autor, texto) {
 // ==========================================
 // 5. MOTOR FÍSICO Y ACTUALIZACIONES DE POSICIÓN
 // ==========================================
+
+// INYECTA ESTA FUNCIÓN NUEVA AQUÍ (ARRIBA DE ACTUALIZAR)
+function calcularReboteAngulo(paleta) {
+    let impactoRelativo = (pelota.y - (paleta.y + paletaAlto / 2)) / (paletaAlto / 2);
+    let anguloGiro = impactoRelativo * (Math.PI / 4); 
+    let direccion = pelota.vx > 0 ? -1 : 1;
+    let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3;
+    
+    // Calculamos los nuevos vectores de velocidad
+    pelota.vx = direccion * velocidadActual * Math.cos(anguloGiro);
+    pelota.vy = velocidadActual * Math.sin(anguloGiro);
+    
+    // BYPASS DE INMUNIDAD: Expulsamos a la pelota fuera de la paleta para evitar el bucle infinito de pegado
+    if (direccion === 1) {
+        // Si rebota a la derecha, la colocamos inmediatamente adelante de la paleta izquierda
+        pelota.x = paleta.x + paletaAncho + pelota.radio + 2;
+    } else {
+        // Si rebota a la izquierda, la colocamos inmediatamente antes de la paleta derecha
+        pelota.x = paleta.x - pelota.radio - 2;
+    }
+    
+    sonarTonoRetro(600, 0.08); 
+
+    // Forzamos un envío de emergencia inmediato por red al servidor para avisar el rebote exacto
+    if (modoActual === 'online' && soyHost) {
+        enviarMensajeRed({ 
+            tipo: 'sync', 
+            p1Y: p1.y, 
+            pelotaX: pelota.x, 
+            pelotaY: pelota.y, 
+            vx: pelota.vx, 
+            vy: pelota.vy,
+            s1: p1.score, 
+            s2: p2.score, 
+            corriendo: partidaEnCurso 
+        });
+    }
+}
+
 function actualizar() {
     // 1. Control del Jugador 1 (W / S) - Siempre activo localmente
     if (modoActual !== 'online' || soyHost) {
