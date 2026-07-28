@@ -385,19 +385,19 @@ function agregarMensajePantalla(autor, texto) {
 // 5. MOTOR FÍSICO Y ACTUALIZACIONES DE POSICIÓN
 // ==========================================
 function actualizar() {
-    // El Jugador 1 (Izquierdo) se mueve localmente si es el Creador o juega offline
+    // 1. Control del Jugador 1 (W / S) - Siempre activo localmente
     if (modoActual !== 'online' || soyHost) {
         if (teclas['w'] || teclas['W']) p1.y = Math.max(10, p1.y - 6);
         if (teclas['s'] || teclas['S']) p1.y = Math.min(480 - paletaAlto - 10, p1.y + 6);
     }
 
-    // El Jugador 2 (Derecho) se mueve localmente en cooperativo o si es el Invitado online
+    // 2. Control del Jugador 2 (Flechas ↑ / ↓) - Activo en local o si eres Invitado online
     if (modoActual === 'local' || (modoActual === 'online' && !soyHost)) {
         if (teclas['ArrowUp']) p2.y = Math.max(10, p2.y - 6);
         if (teclas['ArrowDown']) p2.y = Math.min(480 - paletaAlto - 10, p2.y + 6);
     }
 
-    // Inteligencia Artificial cognitiva (Persigue el centro de la pelota)
+    // 3. Inteligencia Artificial (Modo entrenamiento)
     if (modoActual === 'ia') {
         let centroPaleta = p2.y + paletaAlto / 2;
         if (pelota.vx > 0) { 
@@ -406,36 +406,40 @@ function actualizar() {
         }
     }
 
-    // ADAPTACIÓN DE INGENIERÍA ONLINE CENTRALIZADA
-    // Las colisiones y movimientos de la pelota solo las calcula el Host (o si juegas offline)
-    if (partidaEnCurso && (modoActual !== 'online' || soyHost)) {
-        pelota.x += pelota.vx;
-        pelota.y += pelota.vy;
+    // 4. MOTOR FÍSICO MULTIJUGADOR ARBITRADO
+    if (partidaEnCurso) {
+        // REGLA DE ORO: Si es juego online, SÓLO el Host calcula los rebotes para que la bola no se quede pegada
+        if (modoActual !== 'online' || soyHost) {
+            pelota.x += pelota.vx;
+            pelota.y += pelota.vy;
 
-        // Rebotes contra Techo y Piso
-        if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
-            pelota.vy = -pelota.vy;
-            sonarTonoRetro(300, 0.05); 
-        }
+            // Rebotes estructurales contra Techo y Piso
+            if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
+                pelota.vy = -pelota.vy;
+                sonarTonoRetro(300, 0.05); 
+            }
 
-        // Colisión frontal contra Paleta 1 (Izquierda)
-        if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
-            calcularReboteAngulo(p1);
-        }
-        
-        // Colisión frontal contra Paleta 2 (Derecha)
-        if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
-            calcularReboteAngulo(p2);
-        }
+            // Colisión frontal contra Paleta 1 (Izquierda)
+            if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
+                calcularReboteAngulo(p1);
+            }
+            
+            // Colisión frontal contra Paleta 2 (Derecha)
+            if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
+                calcularReboteAngulo(p2);
+            }
 
-        // Conteo e inyección de anotaciones (Puntos)
-        if (pelota.x < 0) { p2.score++; responderPunto(); }
-        else if (pelota.x > 800) { p1.score++; responderPunto(); }
+            // Conteo de Anotaciones (Goles)
+            if (pelota.x < 0) { p2.score++; responderPunto(); }
+            else if (pelota.x > 800) { p1.score++; responderPunto(); }
+        } else {
+            // Si eres el Invitado (Jugador 2), dejas que la pelota fluya de acuerdo a la velocidad que te manda el Host
+            pelota.x += pelota.vx;
+            pelota.y += pelota.vy;
+        }
     }
-    
-    // Transmisión inmediata y constante de coordenadas a través de tu Web Service
-    enviarDatosRed();
 }
+
 
 function responderPunto() {
     actualizarMarcador();
