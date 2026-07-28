@@ -7,8 +7,10 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Share Tech Mono', monospace;
+  /* Usará Courier New, Consolas o Mónaco, que son 100% compatibles y retro */
+  font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
 }
+
 
 body {
   background-color: #030704; 
