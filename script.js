@@ -101,14 +101,15 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
+// 3. ANTENAS MULTIJUGADOR REAL PARA DIFERENTES PCs (NTFY GLOBAL GRID)
 // ===================================================
-// 3. ANTENAS MULTIJUGADOR REAL ENTRE RENDER Y DIFERENTES PCs (GLOBAL RELAY)
-// ===================================================
-let intervaloEscuchaRed = null;
-let historialMensajesProcesados = new Set(); // Evita duplicar mensajes en pantalla
+let controladorEscuchaRed = null;
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
+    
+    // 1. GENERACIÓN LOCAL INMEDIATA (0 RETRASOS)
+    // El código se pinta en pantalla al instante sin esperar respuestas de internet
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
@@ -121,12 +122,13 @@ function activarNodoRed() {
         btn.disabled = true;
     }
     
+    // Encendemos las variables del Creador de inmediato
     soyHost = true;
     window.esElCreador = true; 
     modoActual = 'online';
     aliasEnemigo = "AWAITING ENEMY...";
 
-    // Escuchador cíclico: Revisa la nube cada 150ms buscando señales del rival
+    // 2. ACTIVACIÓN DE ANTENA DE ESCUCHA REMOTA
     arrancarAntenaEscuchaGlobal();
 }
 
@@ -137,7 +139,7 @@ function conectarAEnemigo() {
         return;
     }
 
-    document.getElementById('estado-conexion').innerText = "SYNCHRONIZING INTERNET GRID...";
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO INTERNET GRID...";
     nombreSalaVirtual = idEnemigo;
     soyHost = false;
     window.esElCreador = false;
@@ -147,69 +149,80 @@ function conectarAEnemigo() {
 
     arrancarAntenaEscuchaGlobal();
 
-    // Enviamos el saludo inicial por internet para forzar la sincronización
+    // Enviamos el saludo inicial por el aire para enlazar las dos computadoras
+    document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
+    const cajaChat = document.getElementById('caja-chat-online');
+    if (cajaChat) cajaChat.classList.remove('oculto');
+    
     setTimeout(() => {
         enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
-        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-        const cajaChat = document.getElementById('caja-chat-online');
-        if (cajaChat) cajaChat.classList.remove('oculto');
         arrancarEscenarioJuego();
     }, 400);
 }
 
 function arrancarAntenaEscuchaGlobal() {
-    if (intervaloEscuchaRed) clearInterval(intervaloEscuchaRed);
+    if (controladorEscuchaRed) clearInterval(controladorEscuchaRed);
     
-    intervaloEscuchaRed = setInterval(() => {
+    // Sintonizamos el satélite de Ntfy para revisar el canal cada 150ms de forma ultra ligera
+    controladorEscuchaRed = setInterval(() => {
         if (!nombreSalaVirtual) return;
         
-        // Consultamos el casillero público de internet de SocketsBay HTTP Fallback (Totalmente libre de CORS)
-        fetch(`https://counterapi.dev{nombreSalaVirtual}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.description) {
-                    const paquete = JSON.parse(data.description);
+        fetch(`https://ntfy.sh{nombreSalaVirtual}/json?poll=1&since=1m`)
+            .then(res => res.text())
+            .then(text => {
+                // Procesamos las líneas de datos JSON que devuelve el servidor por el aire
+                const lineas = text.trim().split('\n');
+                lineas.forEach(linea => {
+                    if (!linea) return;
+                    const paqueteJson = JSON.parse(linea);
                     
-                    // Si el paquete es del rival y no lo hemos procesado mediante su ID único (timestamp)
-                    if (paquete.emisor !== miPeerId && !historialMensajesProcesados.has(paquete.timestamp)) {
-                        historialMensajesProcesados.add(paquete.timestamp);
-                        procesarDatosRed(paquete.contenido);
+                    // Si el paquete contiene un mensaje de juego válido enviado por el rival
+                    if (paqueteJson.event === 'message' && paqueteJson.message) {
+                        const payload = JSON.parse(paqueteJson.message);
+                        
+                        // Validamos que el paquete no sea nuestro y sea más nuevo que el último procesado
+                        if (payload.emisor !== miPeerId && payload.timestamp > (window.ultimoBloqueRed || 0)) {
+                            window.ultimoBloqueRed = payload.timestamp;
+                            procesarDatosRed(payload.contenido);
+                        }
                     }
-                }
+                });
             })
-            .catch(e => console.log("Buscando señal satelital..."));
-    }, 150); 
+            .catch(e => console.log("Buscando señal en la red..."));
+    }, 150);
 }
 
 function enviarMensajeRed(objeto) {
     if (!nombreSalaVirtual) return;
 
-    const stampUnico = Date.now() + "-" + Math.random().toString(36).substring(2, 5);
     const estructura = {
         emisor: miPeerId,
-        timestamp: stampUnico,
+        timestamp: Date.now(),
         contenido: objeto
     };
 
-    // Escribimos en la descripción del contador público de internet para que la otra PC lo lea al instante
-    fetch(`https://counterapi.dev{nombreSalaVirtual}/set?value=1&description=${encodeURIComponent(JSON.stringify(estructura))}`)
-        .catch(e => console.log("Transmitiendo ráfaga..."));
+    // Publicamos el paquete en internet mediante una petición POST nativa ultra veloz
+    fetch(`https://ntfy.sh{nombreSalaVirtual}`, {
+        method: 'POST',
+        body: JSON.stringify(estructura)
+    }).catch(e => console.log("Transmitiendo pulso..."));
 }
 
 function enviarDatosRed() {
     if (modoActual !== 'online' || !nombreSalaVirtual) return;
     
-    // Para no saturar el servidor HTTP, enviamos ráfagas de coordenadas espaciadas
+    // Reducimos el tráfico aéreo para evitar saturar el ancho de banda entre las PCs
     if (soyHost) {
-        if (Math.random() > 0.6) { // Reduce el tráfico para evitar retrasos (lag)
+        if (Math.random() > 0.7) {
             enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
         }
     } else {
-        if (Math.random() > 0.6) {
+        if (Math.random() > 0.7) {
             enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
         }
     }
 }
+
 
 //Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
 // ==========================================
