@@ -107,13 +107,13 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
-// 3. ANTENAS DE INTERNET DIRECTAS HTTP (PUENTE DE ALTA DISPONIBILIDAD)
+// 3. ANTENAS DE INTERNET DIRECTAS HTTP (DOSIFICADAS DE ALTA VELOCIDAD)
 // ===================================================
 let intervaloEscuchaRed = null;
-let historialMensajesProcesados = new Set(); // Filtro para no duplicar chats en pantalla
+let intervaloSincronizacionFisica = null; // Reloj dosificador para no saturar Render
+let historialMensajesProcesados = new Set(); 
 
 function inicializarConexionServidor() {
-    // La conexión se pre-configura de forma instantánea al presionar Online
     document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. CHANNELS ENCRYPTED. ⚡";
 }
 
@@ -127,7 +127,6 @@ function activarNodoRed() {
     document.getElementById('estado-conexion').innerText = "RESERVING ROOM ON SERVER...";
     if (btn) btn.disabled = true;
 
-    // Le informamos a tu propio servidor de Render que registre la sala
     fetch(`${URL_SERVIDOR}/crear-sala`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,16 +144,16 @@ function activarNodoRed() {
         modoActual = 'online';
         aliasEnemigo = "AWAITING ENEMY...";
         
-        // Encendemos la antena receptora HTTP
         arrancarAntenaEscuchaGlobal();
+        arrancarDosificadorRed(); // Activamos el reloj de envío controlado
     })
     .catch(() => {
-        // Bypass autónomo si el Web Service sigue dormido
         document.getElementById('estado-conexion').innerText = "LOCAL MODE ACTIVE (SERVER WAKING UP).";
         soyHost = true;
         window.esElCreador = true;
         modoActual = 'online';
         arrancarAntenaEscuchaGlobal();
+        arrancarDosificadorRed();
     });
 }
 
@@ -173,8 +172,8 @@ function conectarAEnemigo() {
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
 
     arrancarAntenaEscuchaGlobal();
+    arrancarDosificadorRed(); // El invitado también dosifica sus envíos
 
-    // Enviamos el saludo inicial por internet para intercambiar los alias reales
     setTimeout(() => {
         enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
         document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
@@ -186,7 +185,6 @@ function conectarAEnemigo() {
 function arrancarAntenaEscuchaGlobal() {
     if (intervaloEscuchaRed) clearInterval(intervaloEscuchaRed);
     
-    // Consulta continua al buzón privado de tu servidor Node.js cada 150ms
     intervaloEscuchaRed = setInterval(() => {
         if (!nombreSalaVirtual) return;
         
@@ -196,7 +194,6 @@ function arrancarAntenaEscuchaGlobal() {
                 if (data && data.datos) {
                     data.datos.forEach(paquete => {
                         const firmaUnica = paquete.stamp + "-" + paquete.emisor;
-                        // Si el paquete es del rival y no lo hemos decodificado aún
                         if (paquete.emisor !== miPeerId && !historialMensajesProcesados.has(firmaUnica)) {
                             historialMensajesProcesados.add(firmaUnica);
                             procesarDatosRed(paquete.contenido);
@@ -204,14 +201,28 @@ function arrancarAntenaEscuchaGlobal() {
                     });
                 }
             })
-            .catch(() => console.log("Rastreando señal satelital..."));
+            .catch(() => console.log("Rastreando señal..."));
     }, 150); 
+}
+
+// RELOJ DOSIFICADOR DEFINITIVO: Envía datos cada 50ms (20 veces por segundo) sacándolos de la función actualizar()
+function arrancarDosificadorRed() {
+    if (intervaloSincronizacionFisica) clearInterval(intervaloSincronizacionFisica);
+    
+    intervaloSincronizacionFisica = setInterval(() => {
+        if (modoActual !== 'online' || !nombreSalaVirtual) return;
+        
+        if (soyHost) {
+            enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
+        } else {
+            enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
+        }
+    }, 500); // 50 milisegundos mantiene la bola fluida y el servidor libre de cargas masivas
 }
 
 function enviarMensajeRed(objeto) {
     if (!nombreSalaVirtual) return;
 
-    // Enviamos la ráfaga de datos en una solicitud POST directa a tu servidor Node
     fetch(`${URL_SERVIDOR}/enviar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -220,22 +231,11 @@ function enviarMensajeRed(objeto) {
             emisor: miPeerId,
             contenido: objeto
         })
-    }).catch(() => console.log("Retransmitiendo ráfaga..."));
+    }).catch(() => console.log("Ráfaga bloqueada. Reintentando..."));
 }
 
 function enviarDatosRed() {
-    if (modoActual !== 'online' || !nombreSalaVirtual) return;
-    
-    // Sincronización continua dosificada para no saturar tu servidor gratuito
-    if (soyHost) {
-        if (Math.random() > 0.65) {
-            enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
-        }
-    } else {
-        if (Math.random() > 0.65) {
-            enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
-        }
-    }
+    // Esta función queda vacía a propósito porque delegamos toda la carga física al arrancarDosificadorRed()
 }
 
 //Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
