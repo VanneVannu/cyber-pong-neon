@@ -102,10 +102,11 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ==========================================
-// 3. ANTENAS Y CONEXIÓN CON TEMPORIZADOR DE ESCAPE DEFICITARIO
+// 3. ANTENAS Y CONEXIÓN DE RED REAL (SOCKETSBAY DEFINITIVO)
 // ==========================================
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
+    // Generamos un ID alfa-numérico unificado
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
@@ -113,34 +114,18 @@ function activarNodoRed() {
     document.getElementById('mi-id').innerText = "SYNCHRONIZING...";
     if (btn) btn.disabled = true;
 
-    // ESCAPE INMUNE DEL HOST: Si en 300ms el servidor no responde, forzamos la activación local
-    const escapeHostTimeout = setTimeout(() => {
-        console.warn("Bypass Host Activado: Levantando canal autónomo libre de internet.");
-        estabilizarCreadorFisico(btn);
-    }, 300);
-
-    try {
-        conectarServidorRetransmision(nombreSalaVirtual, () => {
-            clearTimeout(escapeHostTimeout); // Si internet respondió a tiempo, cancelamos el escape
-            estabilizarCreadorFisico(btn);
-        });
-    } catch(e) {
-        clearTimeout(escapeHostTimeout);
-        estabilizarCreadorFisico(btn);
-    }
-}
-
-function estabilizarCreadorFisico(btn) {
-    document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. COPY CODE.";
-    if (btn) {
-        btn.innerText = "✔ ACTIVE";
-        btn.disabled = true;
-    }
-    soyHost = true;
-    window.esElCreador = true; 
-    modoActual = 'online';
-    aliasEnemigo = "INVITED_PLAYER"; // Nombre de respaldo local
+    // Conectamos a la red libre de SocketsBay usando tu ID como canal exclusivo
+    conectarServidorRetransmision(nombreSalaVirtual, () => {
+        document.getElementById('mi-id').innerText = miPeerId;
+        document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. COPY CODE.";
+        if (btn) {
+            btn.innerText = "✔ ACTIVE";
+            btn.disabled = true;
+        }
+        soyHost = true;
+        window.esElCreador = true; 
+        modoActual = 'online';
+    });
 }
 
 function conectarAEnemigo() {
@@ -150,53 +135,33 @@ function conectarAEnemigo() {
         return;
     }
 
-    document.getElementById('estado-conexion').innerText = "CONNECTING...";
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO TARGET NODE...";
     nombreSalaVirtual = idEnemigo;
     soyHost = false;
     window.esElCreador = false;
     modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
-    aliasEnemigo = "HOST_PLAYER"; // Nombre de respaldo local
 
-    // ESCAPE INMUNE DEL INVITADO: Si en 300ms sigue pegado, rompe el bucle y mételo a la arena
-    const escapeInvitadoTimeout = setTimeout(() => {
-        console.warn("Bypass Invitado Activado: Forzando sincronización de Arena instantánea.");
-        estabilizarInvitadoFisico();
-    }, 300);
-
-    try {
-        conectarServidorRetransmision(nombreSalaVirtual, () => {
-            clearTimeout(escapeInvitadoTimeout);
+    conectarServidorRetransmision(nombreSalaVirtual, () => {
+        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
+        document.getElementById('caja-chat-online').classList.remove('oculto');
+        
+        // El invitado le envía un disparo de datos al creador para intercambiar los Alias
+        setTimeout(() => {
             enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
-            estabilizarInvitadoFisico();
-        });
-    } catch(e) {
-        clearTimeout(escapeInvitadoTimeout);
-        estabilizarInvitadoFisico();
-    }
-}
-
-function estabilizarInvitadoFisico() {
-    document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-    
-    const cajaChat = document.getElementById('caja-chat-online');
-    if (cajaChat) cajaChat.classList.remove('oculto');
-    
-    const cajaMsgs = document.getElementById('chat-mensajes');
-    if (cajaMsgs && cajaMsgs.children.length === 0) {
-        cajaMsgs.innerHTML = `<div style="color: #ffcc00; font-size: 0.8rem; border-bottom: 1px dashed #14331a; padding-bottom: 4px;">[SYSTEM]: SECURE NODE LINKED WITH ${nombreSalaVirtual}</div>`;
-    }
-    arrancarEscenarioJuego();
+            arrancarEscenarioJuego();
+        }, 300);
+    });
 }
 
 function conectarServidorRetransmision(sala, alConectar) {
-    // Usamos un endpoint demo alternativo de PieSocket
-    const urlSocket = `wss://://piesocket.com{sala}?api_key=vYrNKZ6TeZvaSk6dnS6P4bVp6Mka7BvN&notify_self=0`;
+    // URL PREMIUM LIBRE: SocketsBay no se cae, no usa llaves y conecta en milisegundos
+    const urlSocket = `wss://://socketsbay.com{sala}/`;
     
     puenteRedSocket = new WebSocket(urlSocket);
     
     puenteRedSocket.onopen = function() { 
-        console.log("Conexión de red establecida.");
+        console.log("Antena enganchada al canal de SocketsBay:", sala);
         alConectar(); 
     };
     
@@ -205,8 +170,9 @@ function conectarServidorRetransmision(sala, alConectar) {
         procesarDatosRed(datos);
     };
     
-    puenteRedSocket.onerror = function() {
-        console.warn("Handshake WebSockets bloqueado. Ejecutando bypass autónomo.");
+    puenteRedSocket.onerror = function(err) {
+        console.error("Fallo de infraestructura en WebSockets:", err);
+        document.getElementById('estado-conexion').innerText = "NETWORK TIMEOUT. RETRY.";
     };
 }
 
@@ -224,7 +190,6 @@ function enviarDatosRed() {
         enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
     }
 }
-
 
 //Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
 // ==========================================
