@@ -13,7 +13,10 @@ let partidaEnCurso = false;
 let aliasPropio = 'PLAYER_1';
 let aliasEnemigo = 'COMP_CORE';
 
-let puenteRedSocket = null;
+// VARIABLES EXCLUSIVAS DE TU SERVIDOR CENTRAL REAL
+// (Recuerda cambiar esta URL por el enlace que te dio tu Web Service en Render)
+const URL_SERVIDOR = "https://cyber-pong-server.onrender.com"; 
+let socket = null;
 let nombreSalaVirtual = '';
 
 const paletaAncho = 12, paletaAlto = 90;
@@ -29,7 +32,7 @@ const IA_CONFIG = { easy: 2.5, medium: 4.5, hard: 7.5 };
 let velocidadIA = 4.5;
 
 window.bucleActivo = false;
-window.esElCreador = false; // Bandera extra para forzar el encendido de START MATCH
+window.esElCreador = false; 
 
 
 //Parte 2: Controladores del Menú, Selección de Modo y Cambio de Pantallas
@@ -43,6 +46,8 @@ function seleccionarModo(modo) {
 
     if (modo === 'online') {
         document.getElementById('panel-online').classList.remove('oculto');
+        // REPARADO: Conectamos nativamente al Web Service de Render al pulsar Online
+        inicializarConexionServidor();
     } else {
         if (modo === 'local') aliasEnemigo = 'PLAYER_2';
         if (modo === 'ia') aliasEnemigo = 'INFECTED_IA';
@@ -60,7 +65,7 @@ function arrancarEscenarioJuego() {
         if (window.esElCreador === true || soyHost === true) {
             // Configuración inmutable para el Creador (Jugador 1)
             document.getElementById('label-p1').innerText = aliasPropio;
-            document.getElementById('label-p2').innerText = "INVITED_PLAYER"; // Nombre base hasta el handshake
+            document.getElementById('label-p2').innerText = "INVITED_PLAYER"; 
             
             const btnStart = document.getElementById('btn-start-match');
             btnStart.disabled = false;
@@ -69,7 +74,7 @@ function arrancarEscenarioJuego() {
             btnStart.innerText = "🎮 START MATCH";
         } else {
             // Configuración inmutable para el Invitado (Jugador 2)
-            document.getElementById('label-p1').innerText = "HOST_PLAYER"; // Nombre base hasta el handshake
+            document.getElementById('label-p1').innerText = "HOST_PLAYER"; 
             document.getElementById('label-p2').innerText = aliasPropio;
             
             const btnStart = document.getElementById('btn-start-match');
@@ -99,127 +104,115 @@ function arrancarEscenarioJuego() {
 }
 
 
+
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
-// 3. ANTENAS MULTIJUGADOR REAL PARA DIFERENTES PCs (NTFY GLOBAL GRID)
+// 3. ANTENAS DE RED REAL EN LA NUBE (SOCKET.IO HUB)
 // ===================================================
-let controladorEscuchaRed = null;
+
+// Función madre que despierta y conecta el script con tu Web Service de Render
+function inicializarConexionServidor() {
+    if (socket) return; // Evita duplicar conexiones al presionar varias veces
+    
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB...";
+    
+    // Establecemos el enlace WebSocket bidireccional nativo
+    socket = io(URL_SERVIDOR);
+
+    socket.on('connect', () => {
+        document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. READY TO PROTOCOL.";
+        console.log("Enlace directo establecido con el servidor central de Render.");
+    });
+
+    // Escuchador que se activa en la pantalla del Host cuando el Invitado entra a la sala
+    socket.on('rival_conectado', () => {
+        document.getElementById('estado-conexion').innerText = "ENEMY DETECTED! LINKING TERMINALS...";
+        // El Host dispara el apretón de manos inicial enviando su Alias
+        socket.emit('enviar_paquete', { 
+            salaId: nombreSalaVirtual, 
+            datos: { tipo: 'handshake', alias: aliasPropio } 
+        });
+    });
+
+    // Receptor universal de paquetes de datos (Chat, Sincronización, Goles)
+    socket.on('recibir_paquete', (datos) => {
+        procesarDatosRed(datos);
+    });
+
+    socket.on('error_sala', (msg) => {
+        alert("🚨 NETWORK PROTOCOL: " + msg);
+        document.getElementById('estado-conexion').innerText = "Synchronization error. Retry.";
+    });
+}
 
 function activarNodoRed() {
+    if (!socket) {
+        alert("🚨 HUB NOT READY. PLEASE WAIT A SECOND.");
+        return;
+    }
     const btn = document.getElementById('btn-crear-id');
-    
-    // 1. GENERACIÓN LOCAL INMEDIATA (0 RETRASOS)
-    // El código se pinta en pantalla al instante sin esperar respuestas de internet
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
 
+    // Le ordenamos a tu Web Service que reserve este código de sala
+    socket.emit('crear_sala', nombreSalaVirtual);
+
     document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. SEND ID TO ENEMY.";
-    
+    document.getElementById('estado-conexion').innerText = "ROOM ACTIVE. AWAITING REMOTE NODE...";
     if (btn) {
         btn.innerText = "✔ ACTIVE";
         btn.disabled = true;
     }
-    
-    // Encendemos las variables del Creador de inmediato
     soyHost = true;
     window.esElCreador = true; 
-    modoActual = 'online';
-    aliasEnemigo = "AWAITING ENEMY...";
-
-    // 2. ACTIVACIÓN DE ANTENA DE ESCUCHA REMOTA
-    arrancarAntenaEscuchaGlobal();
 }
 
 function conectarAEnemigo() {
+    if (!socket) {
+        alert("🚨 HUB NOT READY. PLEASE WAIT A SECOND.");
+        return;
+    }
     const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
     if (!idEnemigo) {
         alert("🚨 PLEASE ENTER A VALID ENEMY ID");
         return;
     }
 
-    document.getElementById('estado-conexion').innerText = "CONNECTING TO INTERNET GRID...";
     nombreSalaVirtual = idEnemigo;
     soyHost = false;
     window.esElCreador = false;
-    modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
-    aliasEnemigo = "HOST_PLAYER";
 
-    arrancarAntenaEscuchaGlobal();
+    document.getElementById('estado-conexion').innerText = "VIRTUAL LINK COMPILING...";
 
-    // Enviamos el saludo inicial por el aire para enlazar las dos computadoras
-    document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-    const cajaChat = document.getElementById('caja-chat-online');
-    if (cajaChat) cajaChat.classList.remove('oculto');
-    
-    setTimeout(() => {
-        enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
-        arrancarEscenarioJuego();
-    }, 400);
+    // Le pedimos a tu servidor de Node.js unirse al canal del creador
+    socket.emit('unirse_sala', nombreSalaVirtual);
 }
 
-function arrancarAntenaEscuchaGlobal() {
-    if (controladorEscuchaRed) clearInterval(controladorEscuchaRed);
-    
-    // Sintonizamos el satélite de Ntfy para revisar el canal cada 150ms de forma ultra ligera
-    controladorEscuchaRed = setInterval(() => {
-        if (!nombreSalaVirtual) return;
-        
-        fetch(`https://ntfy.sh{nombreSalaVirtual}/json?poll=1&since=1m`)
-            .then(res => res.text())
-            .then(text => {
-                // Procesamos las líneas de datos JSON que devuelve el servidor por el aire
-                const lineas = text.trim().split('\n');
-                lineas.forEach(linea => {
-                    if (!linea) return;
-                    const paqueteJson = JSON.parse(linea);
-                    
-                    // Si el paquete contiene un mensaje de juego válido enviado por el rival
-                    if (paqueteJson.event === 'message' && paqueteJson.message) {
-                        const payload = JSON.parse(paqueteJson.message);
-                        
-                        // Validamos que el paquete no sea nuestro y sea más nuevo que el último procesado
-                        if (payload.emisor !== miPeerId && payload.timestamp > (window.ultimoBloqueRed || 0)) {
-                            window.ultimoBloqueRed = payload.timestamp;
-                            procesarDatosRed(payload.contenido);
-                        }
-                    }
-                });
-            })
-            .catch(e => console.log("Buscando señal en la red..."));
-    }, 150);
-}
-
+// Emisor de ráfagas para canalizar el texto del chat y saques
 function enviarMensajeRed(objeto) {
-    if (!nombreSalaVirtual) return;
-
-    const estructura = {
-        emisor: miPeerId,
-        timestamp: Date.now(),
-        contenido: objeto
-    };
-
-    // Publicamos el paquete en internet mediante una petición POST nativa ultra veloz
-    fetch(`https://ntfy.sh{nombreSalaVirtual}`, {
-        method: 'POST',
-        body: JSON.stringify(estructura)
-    }).catch(e => console.log("Transmitiendo pulso..."));
+    if (socket && nombreSalaVirtual) {
+        socket.emit('enviar_paquete', { salaId: nombreSalaVirtual, datos: objeto });
+    }
 }
 
+// Transmisión masiva de coordenadas en tiempo real a 60 FPS
 function enviarDatosRed() {
-    if (modoActual !== 'online' || !nombreSalaVirtual) return;
+    if (modoActual !== 'online' || !socket || !nombreSalaVirtual) return;
     
-    // Reducimos el tráfico aéreo para evitar saturar el ancho de banda entre las PCs
     if (soyHost) {
-        if (Math.random() > 0.7) {
-            enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
-        }
+        // El creador transmite de forma continua la paleta izquierda, la bola y los puntos
+        socket.emit('enviar_paquete', { 
+            salaId: nombreSalaVirtual, 
+            datos: { tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso } 
+        });
     } else {
-        if (Math.random() > 0.7) {
-            enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
-        }
+        // El invitado transmite únicamente su raqueta derecha
+        socket.emit('enviar_paquete', { 
+            salaId: nombreSalaVirtual, 
+            datos: { tipo: 'sync', p2Y: p2.y } 
+        });
     }
 }
 
@@ -240,6 +233,9 @@ function procesarDatosRed(data) {
         aliasEnemigo = data.alias;
         // CORREGIDO: El invitado pinta al host en el lado izquierdo
         document.getElementById('label-p1').innerText = aliasEnemigo;
+        // REPARADO: El invitado también despliega el chat y entra a la arena de inmediato
+        document.getElementById('caja-chat-online').classList.remove('oculto');
+        arrancarEscenarioJuego();
     }
     if (data.tipo === 'chat') { 
         agregarMensajePantalla(aliasEnemigo, data.mensaje); 
@@ -278,6 +274,9 @@ function reiniciarPartidaCompleta() {
     if (modoActual === 'online') { enviarMensajeRed({ tipo: 'reset_match' }); }
 }
 
+// ==========================================
+// 4. SECCIÓN B: CONTROLES DE FLUJO Y CHAT REAL
+// ==========================================
 function reiniciarPartidaCompletaLocal() {
     p1.score = 0; p2.score = 0;
     p1.y = 480 / 2 - paletaAlto / 2;
@@ -291,7 +290,13 @@ function reiniciarPartidaCompletaLocal() {
 function volverAlMenuInicial() {
     partidaEnCurso = false;
     window.bucleActivo = false; 
-    if (puenteRedSocket) { puenteRedSocket.close(); puenteRedSocket = null; }
+    
+    // REPARADO: Desconectamos la antena de Socket.io de tu Web Service al salir
+    if (socket) { 
+        socket.disconnect(); 
+        socket = null; 
+    }
+    
     reiniciarPartidaCompletaLocal();
 
     document.getElementById('escenario-juego').style.setProperty('display', 'none', 'important');
@@ -302,11 +307,13 @@ function volverAlMenuInicial() {
     document.getElementById('input-peer-id').value = '';
     
     const btnId = document.getElementById('btn-crear-id');
-    if(btnId) { btnId.disabled = false; btnId.innerText = "⚡ GENERATE ID"; }
+    if(btnId) { 
+        btnId.disabled = false; 
+        btnId.innerText = "⚡ GENERATE ID"; 
+    }
     document.getElementById('mi-id').innerText = "OFFLINE // N/A";
 }
 
-// SISTEMA DE CHAT REPARADO E INMUNE A CAÍDAS
 function evaluarTeclaChat(e) { 
     if(e.key === 'Enter') enviarMensajeChat(); 
 }
@@ -314,17 +321,15 @@ function evaluarTeclaChat(e) {
 function enviarMensajeChat() {
     const input = document.getElementById('input-msg-chat');
     const msg = input.value.trim();
-    if(!msg) return; // Sólo frena si la caja está vacía
+    if(!msg) return; 
 
-    // El mensaje SIEMPRE se imprime en tu pantalla de inmediato
+    // El mensaje se imprime en tu pantalla de inmediato
     agregarMensajePantalla(aliasPropio, msg);
     
-    // Intenta enviarlo por el aire si el socket está activo
-    if (puenteRedSocket && puenteRedSocket.readyState === WebSocket.OPEN) {
-        enviarMensajeRed({ tipo: 'chat', mensaje: msg });
-    }
+    // REPARADO: Envía el mensaje emitiendo el evento real a través de tu servidor Node.js
+    enviarMensajeRed({ tipo: 'chat', mensaje: msg });
     
-    input.value = ''; // Limpia el input sin quedarse colgado
+    input.value = ''; 
 }
 
 function agregarMensajePantalla(autor, texto) {
@@ -356,21 +361,22 @@ function actualizar() {
     // Inteligencia Artificial cognitiva (Persigue el centro de la pelota)
     if (modoActual === 'ia') {
         let centroPaleta = p2.y + paletaAlto / 2;
-        if (pelota.vx > 0) { // Solo reacciona si la pelota va hacia su campo
+        if (pelota.vx > 0) { 
             if (centroPaleta < pelota.y - 12) p2.y = Math.min(480 - paletaAlto - 10, p2.y + velocidadIA);
             else if (centroPaleta > pelota.y + 12) p2.y = Math.max(10, p2.y - velocidadIA);
         }
     }
 
-    // Físicas generales de movimiento, rebotes y colisiones raqueta-bola
-    if (partidaEnCurso) {
+    // ADAPTACIÓN DE INGENIERÍA ONLINE CENTRALIZADA
+    // Las colisiones y movimientos de la pelota solo las calcula el Host (o si juegas offline)
+    if (partidaEnCurso && (modoActual !== 'online' || soyHost)) {
         pelota.x += pelota.vx;
         pelota.y += pelota.vy;
 
         // Rebotes contra Techo y Piso
         if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
             pelota.vy = -pelota.vy;
-            sonarTonoRetro(300, 0.05); // Beep rápido de colisión perimetral
+            sonarTonoRetro(300, 0.05); 
         }
 
         // Colisión frontal contra Paleta 1 (Izquierda)
@@ -388,21 +394,8 @@ function actualizar() {
         else if (pelota.x > 800) { p1.score++; responderPunto(); }
     }
     
-    // Transmisión inalámbrica continua de coordenadas
+    // Transmisión inmediata y constante de coordenadas a través de tu Web Service
     enviarDatosRed();
-}
-
-function calcularReboteAngulo(paleta) {
-    let impactoRelativo = (pelota.y - (paleta.y + paletaAlto / 2)) / (paletaAlto / 2);
-    let anguloGiro = impactoRelativo * (Math.PI / 4); // Desviación vectorial máxima de 45 grados
-    let direccion = pelota.vx > 0 ? -1 : 1;
-    
-    // Aceleración física arcade progresiva en cada golpe directo
-    let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3;
-    
-    pelota.vx = direccion * velocidadActual * Math.cos(anguloGiro);
-    pelota.vy = velocidadActual * Math.sin(anguloGiro);
-    sonarTonoRetro(600, 0.08); // Tono agudo de raquetazo exitoso
 }
 
 function responderPunto() {
