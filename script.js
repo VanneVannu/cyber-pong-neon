@@ -223,7 +223,7 @@ function arrancarAntenaEscuchaGlobal() {
     }, 150); 
 }
 
-// DOSIFICADOR ESTRUCTURAL: Envía únicamente la posición de la raqueta para eliminar el lag por completo
+// DOSIFICADOR FLUIDO: Transmite raquetas de forma continua y alivia al servidor de Render
 function arrancarDosificadorRed() {
     if (intervaloSincronizacionFisica) clearInterval(intervaloSincronizacionFisica);
     
@@ -231,13 +231,13 @@ function arrancarDosificadorRed() {
         if (modoActual !== 'online' || !nombreSalaVirtual) return;
         
         if (soyHost) {
-            // El Host sólo le avisa al Invitado dónde está su paleta 1 y si la partida inició
+            // El Host le avisa al Invitado dónde está su paleta 1
             enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, corriendo: partidaEnCurso });
         } else {
-            // El Invitado sólo le avisa al Host dónde está su paleta 2
+            // El Invitado le avisa al Host dónde está su paleta 2
             enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
         }
-    }, 45); // 45ms mantiene el movimiento del rival fluido y el servidor libre de cargas masivas
+    }, 50); // 50ms mantiene el movimiento del rival ultra fluido y nativo
 }
 
 
@@ -283,8 +283,9 @@ function procesarDatosRed(data) {
         agregarMensajePantalla(aliasEnemigo, data.mensaje); 
     }
     if (data.tipo === 'start_match') {
-        // En el milisegundo en que el Host saca, la pelota del Invitado se activa de forma idéntica
+        // Activación inmediata del saque de la pelota para el segundo jugador
         partidaEnCurso = true;
+        pelota.x = data.px; pelota.y = data.py;
         pelota.vx = data.vx; pelota.vy = data.vy;
         sonarTonoRetro(500, 0.15);
     }
@@ -292,11 +293,19 @@ function procesarDatosRed(data) {
         reiniciarPartidaCompletaLocal(); 
     }
     if (data.tipo === 'sync') {
-        // Sincronización exclusiva de paletas libres de lag perimetral
         if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
         if (!soyHost) {
             if (data.p1Y !== undefined) p1.y = data.p1Y;
             if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
+            
+            // REPARADO: Si el Host recalculó una posición por un raquetazo, alineamos la bola del Invitado
+            if (data.pelotaX !== undefined) {
+                pelota.x = data.pelotaX;
+                pelota.y = data.pelotaY;
+                pelota.vx = data.vx;
+                pelota.vy = data.vy;
+            }
+            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
         }
     }
 }
@@ -456,31 +465,40 @@ function actualizar() {
         }
     }
 
-    // 4. ARQUITECTURA LOCKSTEP: Ambos ordenadores calculan localmente el 100% de las físicas
+    // 4. MOTOR DE TRACCIÓN FÍSICA: La pelota SIEMPRE se mueve en ambos navegadores a 60 FPS
     if (partidaEnCurso) {
         pelota.x += pelota.vx;
         pelota.y += pelota.vy;
 
-        // Rebotes contra Techo y Piso locales inmediatos (0ms de retraso)
+        // Rebotes perimetrales (Techo y Piso) calculados de forma local instantánea
         if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
             pelota.vy = -pelota.vy;
             sonarTonoRetro(300, 0.05); 
         }
 
-        // Colisiones frontales instantáneas calculadas en cada monitor de forma independiente
-        if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
-            calcularReboteAngulo(p1);
+        // COLISIONES RAQUETA-BOLA CON AUTORIDAD INDEPENDIENTE
+        // Colisión contra Paleta 1 (Izquierda) - Solo la calcula el Host
+        if (modoActual !== 'online' || soyHost) {
+            if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
+                calcularReboteAngulo(p1);
+            }
         }
-        if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
-            calcularReboteAngulo(p2);
+        
+        // Colisión contra Paleta 2 (Derecha) - Solo la calcula el Invitado (Evita la raqueta fantasma)
+        if (modoActual !== 'online' || !soyHost) {
+            if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
+                calcularReboteAngulo(p2);
+            }
         }
 
-        // Conteo de puntos simétrico
-        if (pelota.x < 0) { p2.score++; responderPunto(); }
-        else if (pelota.x > 800) { p1.score++; responderPunto(); }
+        // Conteo de goles administrado por el Host
+        if (modoActual !== 'online' || soyHost) {
+            if (pelota.x < 0) { p2.score++; responderPunto(); }
+            else if (pelota.x > 800) { p1.score++; responderPunto(); }
+        }
     }
+    // ¡REPARADO! Borramos la llamada fetch continua de aquí para que el Host jamás se ponga lento
 }
-
 
 
 //Versión que vacía el satélite de internet en cada anotación
