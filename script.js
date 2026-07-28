@@ -56,53 +56,71 @@ function seleccionarModo(modo) {
 }
 
 function arrancarEscenarioJuego() {
-    // Escondemos el menú y mostramos la arena con prioridad absoluta
+    // 1. Escondemos el menú y desplegamos la arena visualmente con prioridad absoluta
     document.getElementById('menu-inicio').style.setProperty('display', 'none', 'important');
     document.getElementById('escenario-juego').style.setProperty('display', 'flex', 'important');
     
-    // CONTROL ASIGNACIÓN DE BOTONES Y ALIAS EN LÍNEA
+    // 2. FORZADO INMUTABLE DE BOTÓN DE INICIO
     if (modoActual === 'online') {
-        if (window.esElCreador === true || soyHost === true) {
-            // Configuración inmutable para el Creador (Jugador 1)
-            document.getElementById('label-p1').innerText = aliasPropio;
-            document.getElementById('label-p2').innerText = "INVITED_PLAYER"; 
+        const miCodigoLocal = document.getElementById('mi-id').innerText.trim();
+        
+        // REGLA DE ORO DE INGENIERÍA: Si tu casilla de ID tiene un código válido generado, eres el HOST
+        if (miCodigoLocal !== "OFFLINE // N/A" && miCodigoLocal !== "" && miCodigoLocal !== "SYNCHRONIZING...") {
+            soyHost = true;
+            window.esElCreador = true;
             
+            document.getElementById('label-p1').innerText = aliasPropio;
+            document.getElementById('label-p2').innerText = aliasEnemigo || "INVITED_PLAYER"; 
+            
+            // Forzamos el encendido indestructible del botón de saque para el Creador
             const btnStart = document.getElementById('btn-start-match');
             btnStart.disabled = false;
+            btnStart.style.pointerEvents = "auto";
+            btnStart.style.opacity = "1";
             btnStart.style.borderColor = "#00ff66";
             btnStart.style.color = "#00ff66";
             btnStart.innerText = "🎮 START MATCH";
+            console.log("Infraestructura: Rol verificado como HOST. Mando de saque activado.");
         } else {
-            // Configuración inmutable para el Invitado (Jugador 2)
-            document.getElementById('label-p1').innerText = "HOST_PLAYER"; 
+            // Si tu casilla de ID está vacía o en offline, entraste poniendo el código del rival (Invitado)
+            soyHost = false;
+            window.esElCreador = false;
+            
+            document.getElementById('label-p1').innerText = aliasEnemigo || "HOST_PLAYER"; 
             document.getElementById('label-p2').innerText = aliasPropio;
             
+            // Forzamos el bloqueo lógico del botón para el Invitado
             const btnStart = document.getElementById('btn-start-match');
             btnStart.disabled = true;
+            btnStart.style.pointerEvents = "none";
             btnStart.style.borderColor = "#14331a";
             btnStart.style.color = "#497a53";
             btnStart.innerText = "⏳ AWAITING HOST START";
+            console.log("Infraestructura: Rol verificado como INVITADO. Esperando señal de saque.");
         }
     } else {
-        // Configuración para Modos Offline (IA o Local)
+        // Modos Locales u Offline estándares
         document.getElementById('label-p1').innerText = aliasPropio;
         document.getElementById('label-p2').innerText = aliasEnemigo;
         
         const btnStart = document.getElementById('btn-start-match');
         btnStart.disabled = false;
+        btnStart.style.pointerEvents = "auto";
         btnStart.style.borderColor = "#00ff66";
         btnStart.style.color = "#00ff66";
         btnStart.innerText = "🎮 START MATCH";
     }
     
+    // 3. Inicializamos las físicas y el bucle a 60FPS
     resetPelota(false); 
     actualizarMarcador(); 
     dibujar(); 
 
-    window.bucleActivo = true;
-    buclePrincipalJuego();
+    if (!window.bucleActivo) {
+        window.bucleActivo = true;
+        buclePrincipalJuego();
+    }
 }
-
 
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
