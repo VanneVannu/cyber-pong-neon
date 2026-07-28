@@ -227,15 +227,28 @@ function arrancarAntenaEscuchaGlobal() {
 function arrancarDosificadorRed() {
     if (intervaloSincronizacionFisica) clearInterval(intervaloSincronizacionFisica);
     
+    // Transmisión a alta velocidad (65ms) para eliminar el retraso de la pelota
     intervaloSincronizacionFisica = setInterval(() => {
         if (modoActual !== 'online' || !nombreSalaVirtual) return;
         
         if (soyHost) {
-            enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
+            // El Host transmite la posición y las velocidades (vx, vy) para la predicción local
+            enviarMensajeRed({ 
+                tipo: 'sync', 
+                p1Y: p1.y, 
+                pelotaX: pelota.x, 
+                pelotaY: pelota.y, 
+                vx: pelota.vx, 
+                vy: pelota.vy, 
+                s1: p1.score, 
+                s2: p2.score, 
+                corriendo: partidaEnCurso 
+            });
         } else {
+            // El Invitado transmite únicamente su raqueta derecha
             enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
         }
-    }, 500); // 50 milisegundos mantiene la bola fluida y el servidor libre de cargas masivas
+    }, 65); // 65ms mantiene la bola fluida a 60FPS sin colapsar tu Web Service gratuito
 }
 
 function enviarMensajeRed(objeto) {
