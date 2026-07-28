@@ -107,38 +107,55 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
-// 3. ANTENAS DE RED INTEGRALES FETCH (RETRANSMISIÓN UNIVERSAL INMUNE)
+// 3. ANTENAS DE INTERNET DIRECTAS HTTP (PUENTE DE ALTA DISPONIBILIDAD)
 // ===================================================
 let intervaloEscuchaRed = null;
+let historialMensajesProcesados = new Set(); // Filtro para no duplicar chats en pantalla
 
 function inicializarConexionServidor() {
-    // Con Fetch nativo la antena se activa en segundo plano en 0 milisegundos
-    document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. READY TO PROTOCOL. ⚡";
+    // La conexión se pre-configura de forma instantánea al presionar Online
+    document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. CHANNELS ENCRYPTED. ⚡";
 }
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
-    
-    // 1. GENERACIÓN TOTALMENTE COMPILADA EN 0ms
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
 
     document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. SEND ID TO ENEMY.";
-    
-    if (btn) {
-        btn.innerText = "✔ ACTIVE";
-        btn.disabled = true;
-    }
-    
-    soyHost = true;
-    window.esElCreador = true; 
-    modoActual = 'online';
-    aliasEnemigo = "AWAITING ENEMY...";
+    document.getElementById('estado-conexion').innerText = "RESERVING ROOM ON SERVER...";
+    if (btn) btn.disabled = true;
 
-    // 2. DISPARAMOS EL CASILLERO DE ESCUCHA CONTINUA
-    arrancarAntenaEscuchaGlobal();
+    // Le informamos a tu propio servidor de Render que registre la sala
+    fetch(`${URL_SERVIDOR}/crear-sala`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salaId: nombreSalaVirtual })
+    })
+    .then(res => res.json())
+    .then(() => {
+        document.getElementById('estado-conexion').innerText = "ROOM ACTIVE. AWAITING REMOTE NODE...";
+        if (btn) {
+            btn.innerText = "✔ ACTIVE";
+            btn.disabled = true;
+        }
+        soyHost = true;
+        window.esElCreador = true; 
+        modoActual = 'online';
+        aliasEnemigo = "AWAITING ENEMY...";
+        
+        // Encendemos la antena receptora HTTP
+        arrancarAntenaEscuchaGlobal();
+    })
+    .catch(() => {
+        // Bypass autónomo si el Web Service sigue dormido
+        document.getElementById('estado-conexion').innerText = "LOCAL MODE ACTIVE (SERVER WAKING UP).";
+        soyHost = true;
+        window.esElCreador = true;
+        modoActual = 'online';
+        arrancarAntenaEscuchaGlobal();
+    });
 }
 
 function conectarAEnemigo() {
@@ -148,84 +165,78 @@ function conectarAEnemigo() {
         return;
     }
 
-    document.getElementById('estado-conexion').innerText = "SYNCHRONIZING INTERNET GRID...";
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO TARGET NODE...";
     nombreSalaVirtual = idEnemigo;
     soyHost = false;
     window.esElCreador = false;
     modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
-    aliasEnemigo = "HOST_PLAYER";
 
     arrancarAntenaEscuchaGlobal();
 
-    // Enviamos el saludo inicial por el aire para forzar la sincronización
+    // Enviamos el saludo inicial por internet para intercambiar los alias reales
     setTimeout(() => {
         enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
         document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-        const cajaChat = document.getElementById('caja-chat-online');
-        if (cajaChat) cajaChat.classList.remove('oculto');
+        document.getElementById('caja-chat-online').classList.remove('oculto');
         arrancarEscenarioJuego();
-    }, 300);
+    }, 400);
 }
 
 function arrancarAntenaEscuchaGlobal() {
     if (intervaloEscuchaRed) clearInterval(intervaloEscuchaRed);
     
-    // El satélite consulta un buzón HTTP abierto en la nube cada 150ms de forma instantánea
+    // Consulta continua al buzón privado de tu servidor Node.js cada 150ms
     intervaloEscuchaRed = setInterval(() => {
         if (!nombreSalaVirtual) return;
         
-        fetch(`https://restfulapi.dev{nombreSalaVirtual}`)
+        fetch(`${URL_SERVIDOR}/escuchar/${nombreSalaVirtual}`)
             .then(res => res.json())
             .then(data => {
-                if (data && data.length > 0 && data[0].data) {
-                    const paquete = data[0].data;
-                    // Si el paquete es del rival y contiene datos nuevos, los inyectamos de golpe
-                    if (paquete.emisor !== miPeerId && paquete.timestamp > (window.ultimoPulsoRed || 0)) {
-                        window.ultimoPulsoRed = paquete.timestamp;
-                        procesarDatosRed(paquete.contenido);
-                    }
+                if (data && data.datos) {
+                    data.datos.forEach(paquete => {
+                        const firmaUnica = paquete.stamp + "-" + paquete.emisor;
+                        // Si el paquete es del rival y no lo hemos decodificado aún
+                        if (paquete.emisor !== miPeerId && !historialMensajesProcesados.has(firmaUnica)) {
+                            historialMensajesProcesados.add(firmaUnica);
+                            procesarDatosRed(paquete.contenido);
+                        }
+                    });
                 }
             })
-            .catch(e => console.log("Rastreando señal..."));
+            .catch(() => console.log("Rastreando señal satelital..."));
     }, 150); 
 }
 
 function enviarMensajeRed(objeto) {
     if (!nombreSalaVirtual) return;
 
-    const estructura = {
-        name: nombreSalaVirtual,
-        data: {
-            emisor: miPeerId,
-            timestamp: Date.now(),
-            contenido: objeto
-        }
-    };
-
-    // Publica el paquete mediante una petición POST nativa a la velocidad de la luz
-    fetch(`https://restfulapi.dev`, {
+    // Enviamos la ráfaga de datos en una solicitud POST directa a tu servidor Node
+    fetch(`${URL_SERVIDOR}/enviar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(estructura)
-    }).catch(e => console.log("Transmitiendo ráfaga..."));
+        body: JSON.stringify({
+            salaId: nombreSalaVirtual,
+            emisor: miPeerId,
+            contenido: objeto
+        })
+    }).catch(() => console.log("Retransmitiendo ráfaga..."));
 }
 
 function enviarDatosRed() {
     if (modoActual !== 'online' || !nombreSalaVirtual) return;
     
-    // Para asegurar un rendimiento fluido de 60 FPS, enviamos coordenadas espaciadas
+    // Sincronización continua dosificada para no saturar tu servidor gratuito
     if (soyHost) {
-        if (Math.random() > 0.6) {
+        if (Math.random() > 0.65) {
             enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
         }
     } else {
-        if (Math.random() > 0.6) {
+        if (Math.random() > 0.65) {
             enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
         }
     }
 }
-
 
 //Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
 // ==========================================
