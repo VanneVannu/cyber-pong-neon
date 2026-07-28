@@ -407,33 +407,32 @@ function agregarMensajePantalla(autor, texto) {
 // 5. MOTOR FÍSICO Y ACTUALIZACIONES DE POSICIÓN
 // ==========================================
 
-// INYECTA ESTA FUNCIÓN NUEVA AQUÍ (ARRIBA DE ACTUALIZAR)
+//Paquete de emergencia de ráfagas HTTP a tu servidor avisándole de inmediato al Host que la pelota cambió de trayectoria
 function calcularReboteAngulo(paleta) {
     let impactoRelativo = (pelota.y - (paleta.y + paletaAlto / 2)) / (paletaAlto / 2);
     let anguloGiro = impactoRelativo * (Math.PI / 4); 
     let direccion = pelota.vx > 0 ? -1 : 1;
     let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3;
     
-    // Calculamos los nuevos vectores de velocidad
     pelota.vx = direccion * velocidadActual * Math.cos(anguloGiro);
     pelota.vy = velocidadActual * Math.sin(anguloGiro);
     
-    // BYPASS DE INMUNIDAD: Expulsamos a la pelota fuera de la paleta para evitar el bucle infinito de pegado
+    // Filtro de inmunidad para que no se quede pegada
     if (direccion === 1) {
-        // Si rebota a la derecha, la colocamos inmediatamente adelante de la paleta izquierda
         pelota.x = paleta.x + paletaAncho + pelota.radio + 2;
     } else {
-        // Si rebota a la izquierda, la colocamos inmediatamente antes de la paleta derecha
         pelota.x = paleta.x - pelota.radio - 2;
     }
     
     sonarTonoRetro(600, 0.08); 
 
-    // Forzamos un envío de emergencia inmediato por red al servidor para avisar el rebote exacto
-    if (modoActual === 'online' && soyHost) {
+    // COMUNICACIÓN DE EMERGENCIA INMEDIATA INTER-PROCESAL
+    if (modoActual === 'online') {
+        // Tanto el Host como el Invitado avisan al servidor cuando golpean la bola
         enviarMensajeRed({ 
             tipo: 'sync', 
             p1Y: p1.y, 
+            p2Y: p2.y,
             pelotaX: pelota.x, 
             pelotaY: pelota.y, 
             vx: pelota.vx, 
@@ -446,13 +445,13 @@ function calcularReboteAngulo(paleta) {
 }
 
 function actualizar() {
-    // 1. Control del Jugador 1 (W / S) - Siempre activo localmente
+    // 1. Control del Jugador 1 (W / S) - Activo localmente si eres el Host u offline
     if (modoActual !== 'online' || soyHost) {
         if (teclas['w'] || teclas['W']) p1.y = Math.max(10, p1.y - 6);
         if (teclas['s'] || teclas['S']) p1.y = Math.min(480 - paletaAlto - 10, p1.y + 6);
     }
 
-    // 2. Control del Jugador 2 (Flechas ↑ / ↓) - Activo en local o si eres Invitado online
+    // 2. Control del Jugador 2 (Flechas ↑ / ↓) - Activo localmente en split o si eres Invitado online
     if (modoActual === 'local' || (modoActual === 'online' && !soyHost)) {
         if (teclas['ArrowUp']) p2.y = Math.max(10, p2.y - 6);
         if (teclas['ArrowDown']) p2.y = Math.min(480 - paletaAlto - 10, p2.y + 6);
@@ -467,40 +466,38 @@ function actualizar() {
         }
     }
 
-    // 4. MOTOR FÍSICO MULTIJUGADOR ARBITRADO
+    // 4. MOTOR FÍSICO CON AUTORIDAD DE REBOTE COMPARTIDA
     if (partidaEnCurso) {
-        // REGLA DE ORO: Si es juego online, SÓLO el Host calcula los rebotes para que la bola no se quede pegada
-        if (modoActual !== 'online' || soyHost) {
-            pelota.x += pelota.vx;
-            pelota.y += pelota.vy;
+        // Ambos jugadores mueven la pelota de forma fluida a 60 FPS en su monitor
+        pelota.x += pelota.vx;
+        pelota.y += pelota.vy;
 
-            // Rebotes estructurales contra Techo y Piso
+        // El Host toma el control central de los rebotes del perímetro (Techo/Piso) y Anotaciones
+        if (modoActual !== 'online' || soyHost) {
             if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
                 pelota.vy = -pelota.vy;
                 sonarTonoRetro(300, 0.05); 
             }
+            if (pelota.x < 0) { p2.score++; responderPunto(); }
+            else if (pelota.x > 800) { p1.score++; responderPunto(); }
+        }
 
-            // Colisión frontal contra Paleta 1 (Izquierda)
+        // AUTORIDAD LOCAL DE RAQUETAS: Cada jugador calcula de forma instantánea su propio raquetazo
+        // Colisión contra Paleta 1 (Izquierda) - Solo la calcula el Host
+        if (modoActual !== 'online' || soyHost) {
             if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
                 calcularReboteAngulo(p1);
             }
-            
-            // Colisión frontal contra Paleta 2 (Derecha)
+        }
+        
+        // Colisión contra Paleta 2 (Derecha) - ¡Ahora la calcula el Invitado localmente para matar el lag!
+        if (modoActual !== 'online' || !soyHost) {
             if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
                 calcularReboteAngulo(p2);
             }
-
-            // Conteo de Anotaciones (Goles)
-            if (pelota.x < 0) { p2.score++; responderPunto(); }
-            else if (pelota.x > 800) { p1.score++; responderPunto(); }
-        } else {
-            // Si eres el Invitado (Jugador 2), dejas que la pelota fluya de acuerdo a la velocidad que te manda el Host
-            pelota.x += pelota.vx;
-            pelota.y += pelota.vy;
         }
     }
 }
-
 
 //Versión que vacía el satélite de internet en cada anotación
 function responderPunto() {
