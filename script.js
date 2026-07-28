@@ -101,13 +101,14 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
-// 3. ANTENAS MULTIJUGADOR REAL PARA DIFERENTES PCs (GLOBAL CLOUD)
+// ===================================================
+// 3. ANTENAS MULTIJUGADOR REAL ENTRE RENDER Y DIFERENTES PCs (GLOBAL RELAY)
 // ===================================================
 let intervaloEscuchaRed = null;
+let historialMensajesProcesados = new Set(); // Evita duplicar mensajes en pantalla
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
-    // Generamos un ID único global
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
@@ -125,7 +126,7 @@ function activarNodoRed() {
     modoActual = 'online';
     aliasEnemigo = "AWAITING ENEMY...";
 
-    // Escuchador en la nube: Revisa el buzón de internet cada 100ms para ver si el rival envió algo
+    // Escuchador cíclico: Revisa la nube cada 150ms buscando señales del rival
     arrancarAntenaEscuchaGlobal();
 }
 
@@ -136,7 +137,7 @@ function conectarAEnemigo() {
         return;
     }
 
-    document.getElementById('estado-conexion').innerText = "CONNECTING TO INTERNET GRID...";
+    document.getElementById('estado-conexion').innerText = "SYNCHRONIZING INTERNET GRID...";
     nombreSalaVirtual = idEnemigo;
     soyHost = false;
     window.esElCreador = false;
@@ -146,70 +147,67 @@ function conectarAEnemigo() {
 
     arrancarAntenaEscuchaGlobal();
 
-    // Enviamos el saludo inicial por internet para que el Host sepa que ya entramos
-    document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-    const cajaChat = document.getElementById('caja-chat-online');
-    if (cajaChat) cajaChat.classList.remove('oculto');
-    
+    // Enviamos el saludo inicial por internet para forzar la sincronización
     setTimeout(() => {
         enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
+        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
+        const cajaChat = document.getElementById('caja-chat-online');
+        if (cajaChat) cajaChat.classList.remove('oculto');
         arrancarEscenarioJuego();
-    }, 500);
+    }, 400);
 }
 
 function arrancarAntenaEscuchaGlobal() {
     if (intervaloEscuchaRed) clearInterval(intervaloEscuchaRed);
     
-    // Usamos un buzón de datos HTTP gratuito (jsonbin o similar simulado por una API abierta de almacenamiento)
-    // Para pruebas globales estables sin bloqueos CORS, mandamos pulsos ligeros de lectura/escritura fetch
     intervaloEscuchaRed = setInterval(() => {
         if (!nombreSalaVirtual) return;
         
-        // Consultamos un casillero público temporal en la nube basado en tu ID amarillo
-        fetch(`https://restfulapi.dev{nombreSalaVirtual}`)
+        // Consultamos el casillero público de internet de SocketsBay HTTP Fallback (Totalmente libre de CORS)
+        fetch(`https://counterapi.dev{nombreSalaVirtual}`)
             .then(res => res.json())
             .then(data => {
-                if (data && data.length > 0 && data[0].data) {
-                    const paquete = data[0].data;
-                    // Si el paquete no es nuestro, lo procesamos de inmediato
-                    if (paquete.emisor !== miPeerId && paquete.timestamp > (window.ultimoPulsoRed || 0)) {
-                        window.ultimoPulsoRed = paquete.timestamp;
+                if (data && data.description) {
+                    const paquete = JSON.parse(data.description);
+                    
+                    // Si el paquete es del rival y no lo hemos procesado mediante su ID único (timestamp)
+                    if (paquete.emisor !== miPeerId && !historialMensajesProcesados.has(paquete.timestamp)) {
+                        historialMensajesProcesados.add(paquete.timestamp);
                         procesarDatosRed(paquete.contenido);
                     }
                 }
             })
-            .catch(e => console.log("Buscando señal en la nube..."));
-    }, 120); // 10 veces por segundo revisa el satélite de internet
+            .catch(e => console.log("Buscando señal satelital..."));
+    }, 150); 
 }
 
 function enviarMensajeRed(objeto) {
     if (!nombreSalaVirtual) return;
 
+    const stampUnico = Date.now() + "-" + Math.random().toString(36).substring(2, 5);
     const estructura = {
-        name: nombreSalaVirtual,
-        data: {
-            emisor: miPeerId,
-            timestamp: Date.now(),
-            contenido: objeto
-        }
+        emisor: miPeerId,
+        timestamp: stampUnico,
+        contenido: objeto
     };
 
-    // Escribimos en el casillero público de internet para que la otra PC lo lea
-    fetch(`https://restfulapi.dev`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(estructura)
-    }).catch(e => console.log("Retransmitiendo paquete..."));
+    // Escribimos en la descripción del contador público de internet para que la otra PC lo lea al instante
+    fetch(`https://counterapi.dev{nombreSalaVirtual}/set?value=1&description=${encodeURIComponent(JSON.stringify(estructura))}`)
+        .catch(e => console.log("Transmitiendo ráfaga..."));
 }
 
 function enviarDatosRed() {
     if (modoActual !== 'online' || !nombreSalaVirtual) return;
     
-    // Para no saturar la API pública, en red por internet enviamos coordenadas de paletas
+    // Para no saturar el servidor HTTP, enviamos ráfagas de coordenadas espaciadas
     if (soyHost) {
-        enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
+        if (Math.random() > 0.6) { // Reduce el tráfico para evitar retrasos (lag)
+            enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score, corriendo: partidaEnCurso });
+        }
     } else {
-        enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
+        if (Math.random() > 0.6) {
+            enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
+        }
     }
 }
 
