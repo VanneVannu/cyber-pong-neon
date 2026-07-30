@@ -126,34 +126,45 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
-// 3. ANTENAS DE RED REAL EN LA NUBE (SOCKET.IO HUB)
+// 3. ANTENAS DE RED REAL EN LA NUBE (SOCKET.IO HUB INMUNE)
 // ===================================================
-let intervaloSincronizacionFisica = null; // Reloj dosificador continuo
+let intervaloSincronizacionFisica = null; 
 
 function inicializarConexionServidor() {
-    if (socket) return; // Evita duplicar la antena si ya está activa
+    if (socket) return; 
     
-    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB...⏳";
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB (WAKING UP SERVER)...⏳";
     
-    // Conexión segura nativa de Socket.io hacia tu Web Service de Render
-    socket = io(URL_SERVIDOR);
+    // Conexión segura nativa de Socket.io permitiendo reconexiones automáticas continuas
+    socket = io(URL_SERVIDOR, {
+        reconnection: true,
+        reconnectionAttempts: 99,
+        reconnectionDelay: 1000
+    });
 
     socket.on('connect', () => {
         document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. CHANNELS SECURE. ⚡";
         console.log("Terminal enlazada al cerebro de Socket.io en la nube.");
+        
+        // REPARADO: Si el usuario ya generó un ID localmente mientras el servidor dormía,
+        // sincronizamos la sala en internet de forma automática en el milisegundo en que el servidor despierta.
+        if (nombreSalaVirtual) {
+            if (soyHost) {
+                socket.emit('crear_sala', nombreSalaVirtual);
+            } else {
+                socket.emit('unirse_sala', nombreSalaVirtual);
+            }
+        }
     });
 
-    // Escuchador automático de Socket.io para cuando el oponente entra a la sala
     socket.on('rival_conectado', () => {
         document.getElementById('estado-conexion').innerText = "ENEMY DETECTED! LINKING TERMINALS...";
-        // El Host dispara el apretón de manos inicial enviando su Alias real por internet
         socket.emit('enviar_paquete', { 
             salaId: nombreSalaVirtual, 
             datos: { tipo: 'handshake', alias: aliasPropio } 
         });
     });
 
-    // Receptor central instantáneo de paquetes de red
     socket.on('recibir_paquete', (datos) => {
         procesarDatosRed(datos);
     });
@@ -165,37 +176,37 @@ function inicializarConexionServidor() {
 }
 
 function activarNodoRed() {
-    if (!socket || !socket.connected) {
-        alert("🚨 HUB NOT READY. PLEASE WAIT FOR THE SERVER TO CONNECT.");
-        return;
-    }
     const btn = document.getElementById('btn-crear-id');
+    
+    // REPARADO: GENERACIÓN LOCAL INSTANTÁNEA (0 RETRASOS)
+    // Rompemos el bucle pintando el código amarillo de inmediato sin importar el estado del servidor
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
 
-    // Le ordenamos a tu Web Service que reserve este código de sala
-    socket.emit('crear_sala', nombreSalaVirtual);
-
     document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "ROOM ACTIVE. AWAITING REMOTE NODE...";
+    document.getElementById('estado-conexion').innerText = "ROOM INITIATED LOCALLY. WAKING UP CLOUD GRID...⏳";
+    
     if (btn) {
         btn.innerText = "✔ ACTIVE";
         btn.disabled = true;
     }
+    
     soyHost = true;
     window.esElCreador = true; 
     modoActual = 'online';
     aliasEnemigo = "AWAITING ENEMY...";
     
+    // Si el servidor de Render ya estaba despierto, le mandamos la sala de inmediato.
+    // Si está dormido, no pasa nada, la función 'connect' de arriba se encargará de enviarla al despertar.
+    if (socket && socket.connected) {
+        socket.emit('crear_sala', nombreSalaVirtual);
+    }
+    
     arrancarDosificadorRed();
 }
 
 function conectarAEnemigo() {
-    if (!socket || !socket.connected) {
-        alert("🚨 HUB NOT READY. PLEASE WAIT FOR THE SERVER TO CONNECT.");
-        return;
-    }
     const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
     if (!idEnemigo) {
         alert("🚨 PLEASE ENTER A VALID ENEMY ID");
@@ -208,15 +219,15 @@ function conectarAEnemigo() {
     modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
 
-    document.getElementById('estado-conexion').innerText = "VIRTUAL LINK COMPILING...";
+    document.getElementById('estado-conexion').innerText = "LINK PRE-COMPILED. SYNCING CLOUD NETWORK...";
     
-    // Le pedimos a tu servidor de Node.js unirse al canal del creador
-    socket.emit('unirse_sala', nombreSalaVirtual);
+    if (socket && socket.connected) {
+        socket.emit('unirse_sala', nombreSalaVirtual);
+    }
     
     arrancarDosificadorRed();
 }
 
-// RELOJ DOSIFICADOR OPTIMIZADO: Envía datos por Socket.io cada 65ms de forma ultra-ligera
 function arrancarDosificadorRed() {
     if (intervaloSincronizacionFisica) clearInterval(intervaloSincronizacionFisica);
     
@@ -224,7 +235,6 @@ function arrancarDosificadorRed() {
         if (modoActual !== 'online' || !socket || !socket.connected || !nombreSalaVirtual) return;
         
         if (soyHost) {
-            // El Host transmite la posición y velocidades vectoriales para el Lockstep local
             socket.emit('enviar_paquete', {
                 salaId: nombreSalaVirtual,
                 datos: { 
@@ -240,7 +250,6 @@ function arrancarDosificadorRed() {
                 }
             });
         } else {
-            // El Invitado transmite únicamente su raqueta derecha
             socket.emit('enviar_paquete', {
                 salaId: nombreSalaVirtual,
                 datos: { tipo: 'sync', p2Y: p2.y }
@@ -258,7 +267,6 @@ function enviarMensajeRed(objeto) {
 function enviarDatosRed() {
     // Queda vacía ya que delegamos al dosificador de 65ms
 }
-
 
 //Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
 // ==========================================
