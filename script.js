@@ -126,66 +126,63 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
-// 3. ANTENAS DE RED REAL EN LA NUBE (SOCKET.IO HUB INMUNE A LA HIBERNACIÓN)
+// 3. ANTENAS MULTIJUGADOR REAL WEB SOCKETS NATIVOS (INMUNE A RESTRICCIONES)
 // ===================================================
-let intervaloSincronizacionFisica = null; 
+let intervaloSincronizacionFisica = null;
+let puenteRedWebSocket = null;
 
 function inicializarConexionServidor() {
-    if (socket) return; 
-    
-    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB (WAKING UP SERVER)...⏳";
-    
-    // CONEXIÓN PURA DE ALTA FRECUENCIA: Usamos exclusivamente WebSockets nativos (Compatible con tu server.js)
-    socket = io(URL_SERVIDOR, {
-        transports: ['websocket'], 
-        upgrade: false,
-        reconnection: true,
-        reconnectionAttempts: 99,
-        reconnectionDelay: 1000
-    });
+    if (puenteRedWebSocket) return;
 
-    // ESTE EVENTO SÓLO SE ACTIVA CUANDO EL SERVIDOR EN RENDER DESPIERTA DE VERDAD
-    socket.on('connect', () => {
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB (WAKING UP SERVER)...⏳";
+
+    // Transformamos tu URL HTTP de Render de forma automática en una dirección segura cifrada WSS
+    const urlWebSocketSegura = URL_SERVIDOR.replace(/^http/, 'ws');
+    
+    // Abrimos el túnel de WebSockets nativo del navegador
+    puenteRedWebSocket = new WebSocket(urlWebSocketSegura);
+
+    puenteRedWebSocket.onopen = function() {
         document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. CHANNELS SECURE. ⚡";
-        console.log("Terminal enlazada al cerebro de Socket.io en la nube.");
-        
-        // AUTO-ENGANCHE: Si el usuario ya generó un ID localmente mientras el servidor dormía,
-        // sincronizamos la sala en internet de forma automática en el instante en que el servidor despierta.
+        console.log("Terminal acoplada de forma aérea al túnel WSS.");
+
+        // Sincronización de sala en caliente si el usuario ya interactuó con los botones
         if (nombreSalaVirtual) {
             if (soyHost) {
-                socket.emit('crear_sala', nombreSalaVirtual);
+                puenteRedWebSocket.send(JSON.stringify({ accion: 'crear_sala', salaId: nombreSalaVirtual }));
             } else {
-                socket.emit('unirse_sala', nombreSalaVirtual);
+                puenteRedWebSocket.send(JSON.stringify({ accion: 'unirse_sala', salaId: nombreSalaVirtual }));
             }
         }
-    });
+    };
 
-    // Escuchador que se activa en la pantalla del Host cuando el Invitado pincha la sala
-    socket.on('rival_conectado', () => {
-        document.getElementById('estado-conexion').innerText = "ENEMY DETECTED! LINKING TERMINALS...";
-        // El Host dispara el apretón de manos inicial enviando su Alias real por la red pura
-        socket.emit('enviar_paquete', { 
-            salaId: nombreSalaVirtual, 
-            datos: { tipo: 'handshake', alias: aliasPropio } 
-        });
-    });
+    puenteRedWebSocket.onmessage = function(event) {
+        const datosCifrados = JSON.parse(event.data);
+        
+        // Escuchador interno: si el servidor avisa que el rival entró, el Host inicia el handshake
+        if (datosCifrados.tipo === 'rival_conectado' && soyHost) {
+            document.getElementById('estado-conexion').innerText = "ENEMY DETECTED! LINKING TERMINALS...";
+            enviarMensajeRed({ tipo: 'handshake', alias: aliasPropio });
+        } else {
+            procesarDatosRed(datosCifrados);
+        }
+    };
 
-    // Receptor central instantáneo de paquetes de red (Chat, Sincronización, Goles)
-    socket.on('recibir_paquete', (datos) => {
-        procesarDatosRed(datos);
-    });
+    puenteRedWebSocket.onerror = function() {
+        console.log("Buscando señal satelital en segundo plano...");
+    };
 }
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
     
-    // 1. GENERACIÓN LOCAL INSTANTÁNEA EN 0ms (Destruye el bloqueo en gris de la interfaz)
+    // GENERACIÓN LOCAL EN 0 MILISEGUNDOS GARANTIZADA
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
 
     document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "ROOM INITIATED LOCALLY. WAKING UP CLOUD GRID...⏳";
+    document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. SEND ID TO ENEMY.";
     
     if (btn) {
         btn.innerText = "✔ ACTIVE";
@@ -197,11 +194,9 @@ function activarNodoRed() {
     modoActual = 'online';
     aliasEnemigo = "AWAITING ENEMY...";
     
-    // 2. CONEXIÓN EN SEGUNDO PLANO
-    // Si el servidor ya estaba despierto, registramos la sala de inmediato.
-    // Si está dormido, la función 'connect' de arriba se encargará de enviarla automáticamente al despertar.
-    if (socket && socket.connected) {
-        socket.emit('crear_sala', nombreSalaVirtual);
+    // Si el túnel de internet ya estaba abierto, registramos la sala de inmediato
+    if (puenteRedWebSocket && puenteRedWebSocket.readyState === WebSocket.OPEN) {
+        puenteRedWebSocket.send(JSON.stringify({ accion: 'crear_sala', salaId: nombreSalaVirtual }));
     }
     
     arrancarDosificadorRed();
@@ -220,63 +215,55 @@ function conectarAEnemigo() {
     modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
 
-    document.getElementById('estado-conexion').innerText = "VIRTUAL LINK COMPILING... ARRANGING ARENA TERMINAL.";
-
-    // BYPASS DE ENTRADA INMEDIATA: Metemos al Jugador 2 de golpe a la arena sin colgarlo en el menú
+    // BYPASS DE INVITADO INMEDIATO: Lo inyectamos de cabeza a la arena para que no se quede colgado
     document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
     const cajaChat = document.getElementById('caja-chat-online');
     if (cajaChat) cajaChat.classList.remove('oculto');
 
-    // Si el servidor de Render ya está despierto, nos acoplamos de inmediato
-    if (socket && socket.connected) {
-        socket.emit('unirse_sala', nombreSalaVirtual);
+    if (puenteRedWebSocket && puenteRedWebSocket.readyState === WebSocket.OPEN) {
+        puenteRedWebSocket.send(JSON.stringify({ accion: 'unirse_sala', salaId: nombreSalaVirtual }));
     }
     
     arrancarEscenarioJuego();
     arrancarDosificadorRed();
 }
 
-// RELOJ DOSIFICADOR EN TIEMPO REAL: Transmite datos por el túnel a alta velocidad (65ms)
+// RELOJ DOSIFICADOR EMISOR DE WEB-SOCKETS: Envía datos de forma directa y ultra veloz cada 65ms
 function arrancarDosificadorRed() {
     if (intervaloSincronizacionFisica) clearInterval(intervaloSincronizacionFisica);
     
     intervaloSincronizacionFisica = setInterval(() => {
-        if (modoActual !== 'online' || !socket || !socket.connected || !nombreSalaVirtual) return;
+        if (modoActual !== 'online' || !puenteRedWebSocket || puenteRedWebSocket.readyState !== WebSocket.OPEN) return;
         
         if (soyHost) {
-            // El Host transmite las coordenadas exactas de su raqueta y de la pelota
-            socket.emit('enviar_paquete', {
-                salaId: nombreSalaVirtual,
-                datos: { 
-                    tipo: 'sync', 
-                    p1Y: p1.y, 
-                    pelotaX: pelota.x, 
-                    pelotaY: pelota.y, 
-                    vx: pelota.vx, 
-                    vy: pelota.vy, 
-                    s1: p1.score, 
-                    s2: p2.score, 
-                    corriendo: partidaEnCurso 
-                }
+            enviarMensajeRed({ 
+                tipo: 'sync', 
+                p1Y: p1.y, 
+                pelotaX: pelota.x, 
+                pelotaY: pelota.y, 
+                vx: pelota.vx, 
+                vy: pelota.vy, 
+                s1: p1.score, 
+                s2: p2.score, 
+                corriendo: partidaEnCurso 
             });
         } else {
-            // El Invitado transmite únicamente su raqueta derecha
-            socket.emit('enviar_paquete', {
-                salaId: nombreSalaVirtual,
-                datos: { tipo: 'sync', p2Y: p2.y }
-            });
+            enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
         }
     }, 65); 
 }
 
 function enviarMensajeRed(objeto) {
-    if (socket && socket.connected && nombreSalaVirtual) {
-        socket.emit('enviar_paquete', { salaId: nombreSalaVirtual, datos: objeto });
+    if (puenteRedWebSocket && puenteRedWebSocket.readyState === WebSocket.OPEN) {
+        puenteRedWebSocket.send(JSON.stringify({
+            accion: 'transmitir',
+            contenido: objeto
+        }));
     }
 }
 
 function enviarDatosRed() {
-    // Heredado del bucle físico de la Parte 5
+    // Heredado del motor físico de la Parte 5
 }
 
 // ==========================================
