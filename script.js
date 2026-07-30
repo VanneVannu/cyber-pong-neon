@@ -126,21 +126,16 @@ function arrancarEscenarioJuego() {
 
 //Parte 3: Antena Inalámbrica WebSocket y Transmisión de Datos
 // ===================================================
-// 3. ANTENAS DE RED REAL EN LA NUBE (SOCKET.IO HUB - CONEXIÓN PURA)
+// 3. ANTENAS DE RED REAL EN LA NUBE (SOCKET.IO HUB INMUNE A LA HIBERNACIÓN)
 // ===================================================
 let intervaloSincronizacionFisica = null; 
 
 function inicializarConexionServidor() {
     if (socket) return; 
     
-    // Bloqueamos temporalmente el botón de generar ID para que no lo pulses antes de que haya internet
-    const btnId = document.getElementById('btn-crear-id');
-    if (btnId) btnId.disabled = true;
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB (WAKING UP SERVER)...⏳";
     
-    document.getElementById('estado-conexion').innerText = "WAKING UP ARCADE CLOUD NODE...⏳ (30s)";
-    
-    // CONEXIÓN PURA DE ALTA FRECUENCIA: Forzamos el uso exclusivo de WebSockets nativos
-    // Esto es 100% compatible con tu server.js y elimina el desfase del polling viejo
+    // CONEXIÓN PURA DE ALTA FRECUENCIA: Usamos exclusivamente WebSockets nativos (Compatible con tu server.js)
     socket = io(URL_SERVIDOR, {
         transports: ['websocket'], 
         upgrade: false,
@@ -154,10 +149,14 @@ function inicializarConexionServidor() {
         document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. CHANNELS SECURE. ⚡";
         console.log("Terminal enlazada al cerebro de Socket.io en la nube.");
         
-        // Desbloqueamos el botón de generar ID de forma segura porque la red real ya existe
-        if (btnId && document.getElementById('mi-id').innerText === "OFFLINE // N/A") {
-            btnId.disabled = false;
-            btnId.innerText = "⚡ GENERATE ID";
+        // AUTO-ENGANCHE: Si el usuario ya generó un ID localmente mientras el servidor dormía,
+        // sincronizamos la sala en internet de forma automática en el instante en que el servidor despierta.
+        if (nombreSalaVirtual) {
+            if (soyHost) {
+                socket.emit('crear_sala', nombreSalaVirtual);
+            } else {
+                socket.emit('unirse_sala', nombreSalaVirtual);
+            }
         }
     });
 
@@ -175,45 +174,40 @@ function inicializarConexionServidor() {
     socket.on('recibir_paquete', (datos) => {
         procesarDatosRed(datos);
     });
-
-    socket.on('connect_error', () => {
-        console.log("Esperando que el nodo de Render termine de compilar...");
-    });
 }
 
 function activarNodoRed() {
-    // Si por alguna razón intenta pulsar el botón sin conexión, lo frenamos de forma segura
-    if (!socket || !socket.connected) {
-        alert("🚨 HUB NOT READY. PLEASE WAIT FOR THE SERVER TO WAKE UP.");
-        return;
-    }
     const btn = document.getElementById('btn-crear-id');
+    
+    // 1. GENERACIÓN LOCAL INSTANTÁNEA EN 0ms (Destruye el bloqueo en gris de la interfaz)
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
 
-    // Le ordenamos a tu Web Service que reserve este código de sala en internet
-    socket.emit('crear_sala', nombreSalaVirtual);
-
     document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "ROOM ACTIVE. AWAITING REMOTE NODE...";
+    document.getElementById('estado-conexion').innerText = "ROOM INITIATED LOCALLY. WAKING UP CLOUD GRID...⏳";
+    
     if (btn) {
         btn.innerText = "✔ ACTIVE";
         btn.disabled = true;
     }
+    
     soyHost = true;
     window.esElCreador = true; 
     modoActual = 'online';
     aliasEnemigo = "AWAITING ENEMY...";
     
+    // 2. CONEXIÓN EN SEGUNDO PLANO
+    // Si el servidor ya estaba despierto, registramos la sala de inmediato.
+    // Si está dormido, la función 'connect' de arriba se encargará de enviarla automáticamente al despertar.
+    if (socket && socket.connected) {
+        socket.emit('crear_sala', nombreSalaVirtual);
+    }
+    
     arrancarDosificadorRed();
 }
 
 function conectarAEnemigo() {
-    if (!socket || !socket.connected) {
-        alert("🚨 HUB NOT READY. PLEASE WAIT FOR THE SERVER TO WAKE UP.");
-        return;
-    }
     const idEnemigo = document.getElementById('input-peer-id').value.trim().toUpperCase();
     if (!idEnemigo) {
         alert("🚨 PLEASE ENTER A VALID ENEMY ID");
@@ -226,11 +220,19 @@ function conectarAEnemigo() {
     modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
 
-    document.getElementById('estado-conexion').innerText = "VIRTUAL LINK COMPILING...";
+    document.getElementById('estado-conexion').innerText = "VIRTUAL LINK COMPILING... ARRANGING ARENA TERMINAL.";
+
+    // BYPASS DE ENTRADA INMEDIATA: Metemos al Jugador 2 de golpe a la arena sin colgarlo en el menú
+    document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
+    const cajaChat = document.getElementById('caja-chat-online');
+    if (cajaChat) cajaChat.classList.remove('oculto');
+
+    // Si el servidor de Render ya está despierto, nos acoplamos de inmediato
+    if (socket && socket.connected) {
+        socket.emit('unirse_sala', nombreSalaVirtual);
+    }
     
-    // Le pedimos a tu servidor de Node.js unirse al canal del creador
-    socket.emit('unirse_sala', nombreSalaVirtual);
-    
+    arrancarEscenarioJuego();
     arrancarDosificadorRed();
 }
 
@@ -275,82 +277,6 @@ function enviarMensajeRed(objeto) {
 
 function enviarDatosRed() {
     // Heredado del bucle físico de la Parte 5
-}
-
-
-//Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
-// ==========================================
-// 4. PROCESAMIENTO DE PAQUETES AÉREOS Y CHAT
-// ==========================================
-function procesarDatosRed(data) {
-    if (data.tipo === 'handshake') {
-        aliasEnemigo = data.alias;
-        document.getElementById('label-p2').innerText = aliasEnemigo;
-        enviarMensajeRed({ tipo: 'handshake_reply', alias: aliasPropio });
-        document.getElementById('caja-chat-online').classList.remove('oculto');
-        arrancarEscenarioJuego();
-    }
-    if (data.tipo === 'handshake_reply') {
-        aliasEnemigo = data.alias;
-        document.getElementById('label-p1').innerText = aliasEnemigo;
-        document.getElementById('caja-chat-online').classList.remove('oculto');
-        arrancarEscenarioJuego();
-    }
-    if (data.tipo === 'chat') { 
-        agregarMensajePantalla(aliasEnemigo, data.mensaje); 
-    }
-    if (data.tipo === 'start_match') {
-        // Tracción física instantánea activada en milisegundos por Socket.io
-        partidaEnCurso = true;
-        pelota.x = data.px; 
-        pelota.y = data.py;
-        pelota.vx = data.vx; 
-        pelota.vy = data.vy;
-        sonarTonoRetro(500, 0.15);
-    }
-    if (data.tipo === 'reset_match') { 
-        reiniciarPartidaCompletaLocal(); 
-    }
-    if (data.tipo === 'sync') {
-        if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
-        if (!soyHost) {
-            if (data.p1Y !== undefined) p1.y = data.p1Y;
-            if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
-            if (data.pelotaX !== undefined) {
-                pelota.x = data.pelotaX;
-                pelota.y = data.pelotaY;
-                pelota.vx = data.vx;
-                pelota.vy = data.vy;
-            }
-            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
-        }
-    }
-}
-
-function iniciarPartidaFisica() {
-    if (partidaEnCurso) return;
-    partidaEnCurso = true;
-    
-    // Calculamos el ángulo matemático exacto de saque inicial
-    pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
-    pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
-    sonarTonoRetro(500, 0.15);
-
-    // Con WebSockets, disparamos un único pulso directo que enciende la bola en ambas pantallas
-    if (modoActual === 'online' && soyHost) {
-        enviarMensajeRed({ 
-            tipo: 'start_match', 
-            px: pelota.x, 
-            py: pelota.y, 
-            vx: pelota.vx, 
-            vy: pelota.vy 
-        });
-    }
-}
-
-function reiniciarPartidaCompleta() {
-    reiniciarPartidaCompletaLocal();
-    if (modoActual === 'online') { enviarMensajeRed({ tipo: 'reset_match' }); }
 }
 
 // ==========================================
