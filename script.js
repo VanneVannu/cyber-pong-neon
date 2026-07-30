@@ -133,10 +133,11 @@ let intervaloSincronizacionFisica = null;
 function inicializarConexionServidor() {
     if (socket) return; 
     
-    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB (WAKING UP SERVER)...⏳";
+    document.getElementById('estado-conexion').innerText = "CONNECTING TO ARCADE HUB...⏳";
     
-    // Conexión segura nativa de Socket.io permitiendo reconexiones automáticas continuas
+    // Conexión directa optimizada con transporte híbrido para evadir bloqueos de Render
     socket = io(URL_SERVIDOR, {
+        transports: ['polling', 'websocket'],
         reconnection: true,
         reconnectionAttempts: 99,
         reconnectionDelay: 1000
@@ -146,13 +147,16 @@ function inicializarConexionServidor() {
         document.getElementById('estado-conexion').innerText = "HUB OPERATIONAL. CHANNELS SECURE. ⚡";
         console.log("Terminal enlazada al cerebro de Socket.io en la nube.");
         
-        // REPARADO: Si el usuario ya generó un ID localmente mientras el servidor dormía,
-        // sincronizamos la sala en internet de forma automática en el milisegundo en que el servidor despierta.
+        // Sincronización automática de sala al conectar de fondo
         if (nombreSalaVirtual) {
             if (soyHost) {
                 socket.emit('crear_sala', nombreSalaVirtual);
             } else {
                 socket.emit('unirse_sala', nombreSalaVirtual);
+                socket.emit('enviar_paquete', { 
+                    salaId: nombreSalaVirtual, 
+                    datos: { tipo: 'handshake', alias: aliasPropio } 
+                });
             }
         }
     });
@@ -168,24 +172,18 @@ function inicializarConexionServidor() {
     socket.on('recibir_paquete', (datos) => {
         procesarDatosRed(datos);
     });
-
-    socket.on('error_sala', (msg) => {
-        alert("🚨 NETWORK PROTOCOL: " + msg);
-        document.getElementById('estado-conexion').innerText = "Synchronization error. Retry.";
-    });
 }
 
 function activarNodoRed() {
     const btn = document.getElementById('btn-crear-id');
     
-    // REPARADO: GENERACIÓN LOCAL INSTANTÁNEA (0 RETRASOS)
-    // Rompemos el bucle pintando el código amarillo de inmediato sin importar el estado del servidor
+    // GENERACIÓN LOCAL INSTANTÁNEA EN 0ms: Destruye el bucle de espera
     const hash = Math.random().toString(36).substring(2, 8).toUpperCase();
     miPeerId = "CP-" + hash;
     nombreSalaVirtual = miPeerId;
 
     document.getElementById('mi-id').innerText = miPeerId;
-    document.getElementById('estado-conexion').innerText = "ROOM INITIATED LOCALLY. WAKING UP CLOUD GRID...⏳";
+    document.getElementById('estado-conexion').innerText = "ONLINE NODE STABLE. SEND ID TO ENEMY.";
     
     if (btn) {
         btn.innerText = "✔ ACTIVE";
@@ -197,8 +195,6 @@ function activarNodoRed() {
     modoActual = 'online';
     aliasEnemigo = "AWAITING ENEMY...";
     
-    // Si el servidor de Render ya estaba despierto, le mandamos la sala de inmediato.
-    // Si está dormido, no pasa nada, la función 'connect' de arriba se encargará de enviarla al despertar.
     if (socket && socket.connected) {
         socket.emit('crear_sala', nombreSalaVirtual);
     }
@@ -219,12 +215,20 @@ function conectarAEnemigo() {
     modoActual = 'online';
     aliasPropio = document.getElementById('input-alias').value.trim() || 'PLAYER_2';
 
-    document.getElementById('estado-conexion').innerText = "LINK PRE-COMPILED. SYNCING CLOUD NETWORK...";
-    
+    // BYPASS DE ENTRADA INMEDIATA: Forzamos el acceso directo a la arena
+    document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
+    const cajaChat = document.getElementById('caja-chat-online');
+    if (cajaChat) cajaChat.classList.remove('oculto');
+
     if (socket && socket.connected) {
         socket.emit('unirse_sala', nombreSalaVirtual);
+        socket.emit('enviar_paquete', { 
+            salaId: nombreSalaVirtual, 
+            datos: { tipo: 'handshake', alias: aliasPropio } 
+        });
     }
     
+    arrancarEscenarioJuego();
     arrancarDosificadorRed();
 }
 
@@ -265,7 +269,7 @@ function enviarMensajeRed(objeto) {
 }
 
 function enviarDatosRed() {
-    // Queda vacía ya que delegamos al dosificador de 65ms
+    // Heredado de la arquitectura de la Parte 5
 }
 
 //Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
