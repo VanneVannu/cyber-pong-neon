@@ -285,16 +285,30 @@ function procesarDatosRed(data) {
         agregarMensajePantalla(aliasEnemigo, data.mensaje); 
     }
     if (data.tipo === 'start_match') {
-        // En el instante exacto en que el Host saca, la pelota del Invitado copia el vector y arranca sola
         partidaEnCurso = true;
+        pelota.x = data.px; pelota.y = data.py;
         pelota.vx = data.vx; pelota.vy = data.vy;
         sonarTonoRetro(500, 0.15);
     }
     if (data.tipo === 'reset_match') { 
         reiniciarPartidaCompletaLocal(); 
     }
+    
+    // CAPTURA DEL CANDADO DE ALINEACIÓN INTERNET
+    if (data.tipo === 'impacto_paleta') {
+        // Copiamos la posición exacta calculada por el rival que golpeó la bola
+        pelota.x = data.px;
+        pelota.y = data.py;
+        pelota.vx = data.vx;
+        pelota.vy = data.vy;
+        p1.score = data.s1;
+        p2.score = data.s2;
+        actualizarMarcador();
+        sonarTonoRetro(600, 0.08); // Suena el beep coordinado en la otra PC
+    }
+    
     if (data.tipo === 'sync') {
-        // Sincronización exclusiva de la raqueta del rival recibida por internet
+        // Sincronización continua y ligera de las raquetas
         if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
         if (!soyHost) {
             if (data.p1Y !== undefined) p1.y = data.p1Y;
@@ -417,7 +431,7 @@ function calcularReboteAngulo(paleta) {
     pelota.vx = direccion * velocidadActual * Math.cos(anguloGiro);
     pelota.vy = velocidadActual * Math.sin(anguloGiro);
     
-    // Filtro de inmunidad para que no se quede pegada
+    // Candado físico para expulsar la bola de la raqueta y que no se quede pegada
     if (direccion === 1) {
         pelota.x = paleta.x + paletaAncho + pelota.radio + 2;
     } else {
@@ -426,21 +440,20 @@ function calcularReboteAngulo(paleta) {
     
     sonarTonoRetro(600, 0.08); 
 
-    // MODIFICADO: Con Socket.io, si hay un impacto, el Host transmite el vector inmediatamente
-    if (modoActual === 'online' && soyHost) {
+    // ANCLA DE ALINEACIÓN: Obligamos a la otra PC a copiar exactamente nuestra pelota tras el raquetazo
+    if (modoActual === 'online') {
         enviarMensajeRed({ 
-            tipo: 'sync', 
-            p1Y: p1.y, 
-            pelotaX: pelota.x, 
-            pelotaY: pelota.y, 
+            tipo: 'impacto_paleta', 
+            px: pelota.x, 
+            py: pelota.y, 
             vx: pelota.vx, 
             vy: pelota.vy,
-            s1: p1.score, 
-            s2: p2.score, 
-            corriendo: partidaEnCurso 
+            s1: p1.score,
+            s2: p2.score
         });
     }
 }
+
 
 function actualizar() {
     // REGLA 1: El Jugador 1 (Izquierdo) SÓLO se mueve si está en su propia PC (Host) o juega offline
