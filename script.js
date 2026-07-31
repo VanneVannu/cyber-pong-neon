@@ -226,27 +226,20 @@ function arrancarAntenaEscuchaGlobal() {
 function arrancarDosificadorRed() {
     if (intervaloSincronizacionFisica) clearInterval(intervaloSincronizacionFisica);
     
-    // RELOJ DOSIFICADOR DE COORDENADAS: Transmite ráfagas físicas controladas cada 75ms
+    // TRANSMISIÓN LIGERA: Enviamos únicamente la coordenada de la paleta local cada 45ms
     intervaloSincronizacionFisica = setInterval(() => {
         if (modoActual !== 'online' || !nombreSalaVirtual) return;
         
         if (soyHost) {
-            enviarMensajeRed({ 
-                tipo: 'sync', 
-                p1Y: p1.y, 
-                pelotaX: pelota.x, 
-                pelotaY: pelota.y, 
-                vx: pelota.vx, 
-                vy: pelota.vy, 
-                s1: p1.score, 
-                s2: p2.score, 
-                corriendo: partidaEnCurso 
-            });
+            // El Host sólo le transmite al Invitado la altura de la paleta 1
+            enviarMensajeRed({ tipo: 'sync', p1Y: p1.y, corriendo: partidaEnCurso });
         } else {
+            // El Invitado sólo le transmite al Host la altura de la paleta 2
             enviarMensajeRed({ tipo: 'sync', p2Y: p2.y });
         }
-    }, 75); 
+    }, 45); 
 }
+
 
 function enviarMensajeRed(objeto) {
     if (!nombreSalaVirtual) return;
@@ -268,6 +261,7 @@ function enviarMensajeRed(objeto) {
 function enviarDatosRed() {
     // Heredado del motor físico de la Parte 5
 }
+
 
 //Parte 4: Procesamiento de Paquetes Aéreos, Saques y Chat
 // ==========================================
@@ -291,32 +285,24 @@ function procesarDatosRed(data) {
         agregarMensajePantalla(aliasEnemigo, data.mensaje); 
     }
     if (data.tipo === 'start_match') {
-        // Tracción física instantánea activada en milisegundos por Socket.io
+        // En el instante exacto en que el Host saca, la pelota del Invitado copia el vector y arranca sola
         partidaEnCurso = true;
-        pelota.x = data.px; 
-        pelota.y = data.py;
-        pelota.vx = data.vx; 
-        pelota.vy = data.vy;
+        pelota.vx = data.vx; pelota.vy = data.vy;
         sonarTonoRetro(500, 0.15);
     }
     if (data.tipo === 'reset_match') { 
         reiniciarPartidaCompletaLocal(); 
     }
     if (data.tipo === 'sync') {
+        // Sincronización exclusiva de la raqueta del rival recibida por internet
         if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
         if (!soyHost) {
             if (data.p1Y !== undefined) p1.y = data.p1Y;
             if (data.corriendo !== undefined) partidaEnCurso = data.corriendo;
-            if (data.pelotaX !== undefined) {
-                pelota.x = data.pelotaX;
-                pelota.y = data.pelotaY;
-                pelota.vx = data.vx;
-                pelota.vy = data.vy;
-            }
-            if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
         }
     }
 }
+
 
 function iniciarPartidaFisica() {
     if (partidaEnCurso) return;
@@ -457,13 +443,13 @@ function calcularReboteAngulo(paleta) {
 }
 
 function actualizar() {
-    // 1. Control del Jugador 1 (W / S) - Local si eres Host u Offline
+    // REGLA 1: El Jugador 1 (Izquierdo) SÓLO se mueve si está en su propia PC (Host) o juega offline
     if (modoActual !== 'online' || soyHost) {
         if (teclas['w'] || teclas['W']) p1.y = Math.max(10, p1.y - 6);
         if (teclas['s'] || teclas['S']) p1.y = Math.min(480 - paletaAlto - 10, p1.y + 6);
     }
 
-    // 2. Control del Jugador 2 (Flechas ↑ / ↓) - Local si eres Invitado u Offline
+    // REGLA 2: El Jugador 2 (Derecho) SÓLO se mueve si está en su propia PC (Invitado) o juega offline
     if (modoActual === 'local' || (modoActual === 'online' && !soyHost)) {
         if (teclas['ArrowUp']) p2.y = Math.max(10, p2.y - 6);
         if (teclas['ArrowDown']) p2.y = Math.min(480 - paletaAlto - 10, p2.y + 6);
@@ -478,35 +464,29 @@ function actualizar() {
         }
     }
 
-    // 4. MOTOR DE TRACCIÓN FÍSICA SIN RECORTE DE PAQUETES
+    // REGLA 3: DUPLICACIÓN DE ARENA DETERMINISTA
+    // Ambas computadoras calculan de forma local el 100% de los movimientos y colisiones
     if (partidaEnCurso) {
-        // AUTORIDAD TOTAL DEL HOST: Evita que el Jugador 2 deforme la trayectoria
-        if (modoActual !== 'online' || soyHost) {
-            pelota.x += pelota.vx;
-            pelota.y += pelota.vy;
+        pelota.x += pelota.vx;
+        pelota.y += pelota.vy;
 
-            // Rebotes estructurales perimetrales
-            if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
-                pelota.vy = -pelota.vy;
-                sonarTonoRetro(300, 0.05); 
-            }
-
-            // Colisiones contra ambas paletas administradas por el Host de forma limpia
-            if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
-                calcularReboteAngulo(p1);
-            }
-            if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
-                calcularReboteAngulo(p2);
-            }
-
-            // Conteo de anotaciones unificado
-            if (pelota.x < 0) { p2.score++; responderPunto(); }
-            else if (pelota.x > 800) { p1.score++; responderPunto(); }
-        } else {
-            // EL INVITADO CORRE EN MODO ENLACE: Desplaza la bola imitando fielmente los vectores del Host
-            pelota.x += pelota.vx;
-            pelota.y += pelota.vy;
+        // Rebotes perimetrales (Techo y Piso) locales e inmediatos (0ms de lag)
+        if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= 480) {
+            pelota.vy = -pelota.vy;
+            sonarTonoRetro(300, 0.05); 
         }
+
+        // Ambas pantallas calculan con precisión milimétrica los impactos en sus paletas
+        if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
+            calcularReboteAngulo(p1);
+        }
+        if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
+            calcularReboteAngulo(p2);
+        }
+
+        // Conteo de puntos simétrico en ambos extremos
+        if (pelota.x < 0) { p2.score++; responderPunto(); }
+        else if (pelota.x > 800) { p1.score++; responderPunto(); }
     }
 }
 
