@@ -18,9 +18,14 @@ body {
   color: #00ff66;
   min-height: 100vh;
   margin: 0;
-  padding: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Empuja el botón arriba, el juego al centro y los créditos al fondo */
+  align-items: center;
   overflow: hidden;
   position: relative;
+  box-sizing: border-box;
 }
 
 
@@ -55,36 +60,31 @@ body {
   height: 100vh;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
   background-size: 100% 4px, 6px 100%;
-  z-index: 100; /* Se mantiene arriba para dar el efecto visual */
-  pointer-events: none; /* ¡CLAVE! Hace que los clics pasen de largo y toquen los botones de abajo */
+  z-index: 1; /* Se baja al fondo para que no tape los botones */
+  pointer-events: none; /* Desactiva clics en la capa */
 }
 
 
 /* CONTENEDOR DE LA MÁQUINA */
 #contenedor-juego {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%); /* Centrado absoluto perfecto tridimensional */
-  
   width: 90%;
-  max-width: 900px; 
-  background: #09141c; 
-  border: 3px solid #00ff66; 
+  max-width: 900px;
+  background: #09141c;
+  border: 3px solid #00ff66;
   border-radius: 8px;
   box-shadow: 0 0 25px rgba(0, 255, 102, 0.3);
   padding: 30px;
   
   display: flex;
   flex-direction: column;
-  align-items: center; 
+  align-items: center;
   justify-content: center;
   gap: 20px;
   
-  /* ¡CANDADO INDESTRUCTIBLE! Se coloca por encima de absolutamente todo para recibir clics directos */
-  z-index: 999; 
+  /* Candado de posición: se desmarca de cualquier superposición */
+  position: relative; 
+  z-index: 10;
 }
-
 
 
 
