@@ -246,28 +246,3 @@ body {
   position: relative !important;
   z-index: 10000; /* Asegura que se dibuje por encima del fondo oscuro del lobby */
 }
-
-.btn-regresar-arcade {
-  position: fixed;
-  top: 15px;
-  left: 15px;
-  background: #11081f;
-  border: 2px solid #00f2fe; /* Azul eléctrico para el ajedrez */
-  color: #00f2fe;
-  padding: 8px 14px;
-  text-decoration: none;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 0.85rem;
-  font-weight: bold;
-  border-radius: 4px;
-  z-index: 9999;
-  box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
-  transition: all 0.2s ease;
-}
-
-.btn-regresar-arcade:hover {
-  background: #00f2fe;
-  color: #000;
-  box-shadow: 0 0 15px #00f2fe;
-  transform: scale(1.05);
-}
