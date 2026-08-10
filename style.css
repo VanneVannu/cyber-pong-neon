@@ -1,71 +1,31 @@
 /* ===================================================
-   CONFIGURACIÓN GENERAL TERMINAL DE VECTORES
+   1. RESETEO RETRO Y CONFIGURACIÓN MAESTRA DEL BODY
    =================================================== */
-/*@import url('https://googleapis.com');*/
-
-
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  /* Usará Courier New, Consolas o Mónaco, que son 100% compatibles y retro */
   font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
 }
-
 
 body {
   background-color: #05020c;
   color: #00ff66;
   min-height: 100vh;
   margin: 0;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between; /* Empuja el botón arriba, el juego al centro y los créditos al fondo */
-  align-items: center;
+  padding: 0;
   overflow: hidden;
   position: relative;
-  box-sizing: border-box;
+  
+  /* REPARADO: Forzamos la alineación Flexbox absoluta para que todo el contenido flote simétricamente */
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-
-
-/* BOTÓN SALIDA FLOTANTE */
-.btn-regresar-arcade {
-  position: fixed;
-  top: 15px;
-  left: 15px;
-  background: #09140b;
-  border: 2px solid #ffcc00;
-  color: #ffcc00;
-  padding: 8px 14px;
-  text-decoration: none;
-  font-size: 0.85rem;
-  font-weight: bold;
-  border-radius: 4px;
-  z-index: 9999;
-  box-shadow: 0 0 10px rgba(255, 204, 0, 0.2);
-  transition: all 0.2s ease;
-}
-.btn-regresar-arcade:hover {
-  background: #ffcc00; color: #000; box-shadow: 0 0 15px #ffcc00;
-}
-
-/* EFECTO CRT PANTALLA RETRO */
-.efecto-crt-lineas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
-  background-size: 100% 4px, 6px 100%;
-  z-index: 1; /* Se baja al fondo para que no tape los botones */
-  pointer-events: none; /* Desactiva clics en la capa */
-}
-
-
-/* CONTENEDOR DE LA MÁQUINA */
+/* ===================================================
+   2. CONTENEDOR ARCADE CENTRAL (BLOQUE MAESTRO CENTRADO)
+   =================================================== */
 #contenedor-juego {
   width: 90%;
   max-width: 900px;
@@ -81,19 +41,61 @@ body {
   justify-content: center;
   gap: 20px;
   
-  /* Candado de posición: se desmarca de cualquier superposición */
+  /* REPARADO: Le damos prioridad de capa frontal con z-index alto para recibir clics directos */
   position: relative; 
-  z-index: 10;
+  z-index: 100; 
 }
 
+/* ===================================================
+   3. BOTÓN SALIDA FLOTANTE Y CAPAS DE FILTRO CRT
+   =================================================== */
+.btn-regresar-arcade {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  background: #09140b;
+  border: 2px solid #ffcc00;
+  color: #ffcc00;
+  padding: 8px 14px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  
+  /* REPARADO: Prioridad de capa máxima para el botón de eyección al portafolio */
+  z-index: 9999; 
+  box-shadow: 0 0 10px rgba(255, 204, 0, 0.2);
+}
 
+.btn-regresar-arcade:hover {
+  background: #ffcc00; 
+  color: #000; 
+  box-shadow: 0 0 15px #ffcc00;
+}
 
-/* REGLA SAGRADA DE INTERCAMBIO DE PANTALLAS */
+/* EFECTO CRT PANTALLA RETRO */
+.efecto-crt-lineas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+  background-size: 100% 4px, 6px 100%;
+  
+  /* REPARADO: Se baja al fondo relativo del mouse para que los botones de adelante reciban los clics */
+  z-index: 10; 
+  pointer-events: none; 
+}
+
+/* ===================================================
+   4. ESTRUCTURAS DE INTERFAZ DEL MENÚ INICIAL
+   =================================================== */
 .oculto { 
   display: none !important; 
 }
 
-/* INTERFAZ DEL MENÚ INICIAL */
 #menu-inicio {
   display: flex;
   flex-direction: column;
@@ -103,7 +105,6 @@ body {
   gap: 20px;
   text-align: center;
 }
-
 
 .titulo-neon {
   font-size: 3.5rem;
@@ -129,6 +130,7 @@ body {
   color: #00ff66;
 }
 
+/* CAJAS DE INPUTS Y SELECTORES VECTORIALES */
 #input-alias, #select-diff {
   background: #020803;
   border: 2px solid #ffcc00;
@@ -139,9 +141,20 @@ body {
   border-radius: 4px;
   outline: none;
 }
-#select-diff { border-color: #00ff66; color: #00ff66; cursor: pointer; }
-#select-diff option { background: #061208; }
 
+#select-diff { 
+  border-color: #00ff66; 
+  color: #00ff66; 
+  cursor: pointer; 
+}
+
+#select-diff option { 
+  background: #061208; 
+}
+
+/* ===================================================
+   5. BOTONES DE ACCIÓN Y MENÚS DE MODO ARCADE
+   =================================================== */
 .opciones-modo {
   display: flex;
   flex-direction: column;
@@ -161,43 +174,100 @@ body {
   border-radius: 4px;
   transition: all 0.2s;
 }
+
 .btn-modo:hover, .btn-accion:hover {
-  background: #00ff66; color: #000; box-shadow: 0 0 15px #00ff66;
+  background: #00ff66; 
+  color: #000; 
+  box-shadow: 0 0 15px #00ff66;
 }
 
-/* PANEL ONLINE HORIZONTAL */
+/* ===================================================
+   6. PANEL DE CONTROL ONLINE DE PARTIDAS HORIZONTALES
+   =================================================== */
 #panel-online {
   width: 450px;
   margin-top: 15px;
 }
+
 .linea-division {
-  border-top: 1px dashed #ffcc00; margin: 15px 0;
+  border-top: 1px dashed #ffcc00; 
+  margin: 15px 0;
 }
+
 .area-generacion-horizontal {
-  display: flex; justify-content: space-between; align-items: center;
-  background: #020803; border: 1px dashed #14331a; padding: 12px 20px;
-  border-radius: 4px; margin-bottom: 15px; width: 100%;
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  background: #020803; 
+  border: 1px dashed #14331a; 
+  padding: 12px 20px;
+  border-radius: 4px; 
+  margin-bottom: 15px; 
+  width: 100%;
 }
-.bloque-id-izquierdo { display: flex; flex-direction: column; text-align: left; }
-.etiqueta-sistema { font-size: 0.8rem; color: #497a53; }
-.resaltado { color: #ffcc00; font-weight: bold; font-size: 1.1rem; }
 
+.bloque-id-izquierdo { 
+  display: flex; 
+  flex-direction: column; 
+  text-align: left; 
+}
+
+.etiqueta-sistema { 
+  font-size: 0.8rem; 
+  color: #497a53; 
+}
+
+.resaltado { 
+  color: #ffcc00; 
+  font-weight: bold; 
+  font-size: 1.1rem; 
+}
+
+/* BOTÓN DE INTERACCIÓN DE RED SECUNDARIO (DERECHO) */
 .btn-accion-derecho {
-  background: #0a1f0f; border: 2px solid #ffcc00; color: #ffcc00;
-  padding: 8px 14px; font-size: 0.85rem; font-family: inherit;
-  font-weight: bold; cursor: pointer; border-radius: 4px;
+  background: #0a1f0f; 
+  border: 2px solid #ffcc00; 
+  color: #ffcc00;
+  padding: 8px 14px; 
+  font-size: 0.85rem; 
+  font-family: inherit;
+  font-weight: bold; 
+  cursor: pointer; 
+  border-radius: 4px;
 }
-.btn-accion-derecho:hover { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
-.btn-accion-derecho:disabled { border-color: #00ff66; color: #00ff66; background: #041408; }
 
-.inputs-online { display: flex; gap: 10px; justify-content: center; margin-bottom: 10px; }
+.btn-accion-derecho:hover { 
+  background: #ffcc00; 
+  color: #000; 
+  box-shadow: 0 0 10px #ffcc00; 
+}
+
+.btn-accion-derecho:disabled { 
+  border-color: #00ff66; 
+  color: #00ff66; 
+  background: #041408; 
+}
+
+.inputs-online { 
+  display: flex; 
+  gap: 10px; 
+  justify-content: center; 
+  margin-bottom: 10px; 
+}
+
 #input-peer-id {
-  background: #020803; border: 2px solid #ffcc00; color: #fff;
-  padding: 10px; font-family: inherit; border-radius: 4px; text-align: center; width: 180px;
+  background: #020803; 
+  border: 2px solid #ffcc00; 
+  color: #fff;
+  padding: 10px; 
+  font-family: inherit; 
+  border-radius: 4px; 
+  text-align: center; 
+  width: 180px;
 }
 
 /* ===================================================
-   ESCENARIO DE LA ARENA DE COMBATE
+   7. ESCENARIO DE LA ARENA DE COMBATE REAL
    =================================================== */
 #escenario-juego {
   display: flex;
@@ -206,48 +276,185 @@ body {
 }
 
 .cabecera-arena {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 15px; border-bottom: 1px dashed #00ff66; padding-bottom: 10px;
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  margin-bottom: 15px; 
+  border-bottom: 1px dashed #00ff66; 
+  padding-bottom: 10px;
 }
-.nombre-marcador { font-size: 1.3rem; color: #ffcc00; font-weight: bold; width: 200px; }
+
+.nombre-marcador { 
+  font-size: 1.3rem; 
+  color: #ffcc00; 
+  font-weight: bold; 
+  width: 200px; 
+}
+
 #label-p1 { text-align: left; }
 #label-p2 { text-align: right; }
 
-.marcador { font-size: 3rem; font-weight: bold; color: #fff; }
-.separador { color: #ffcc00; margin: 0 10px; }
-
-.controles-partida { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
-.controles-partida button {
-  background: #0a1f0f; border: 2px solid #00ff66; color: #00ff66;
-  padding: 8px 18px; font-family: inherit; font-weight: bold; cursor: pointer; border-radius: 4px;
+.marcador { 
+  font-size: 3rem; 
+  font-weight: bold; 
+  color: #fff; 
 }
-.controles-partida button:hover { background: #00ff66; color: #000; box-shadow: 0 0 10px #00ff66; }
-#btn-reset-match, #btn-main-menu { border-color: #ffcc00; color: #ffcc00; }
-#btn-reset-match:hover, #btn-main-menu:hover { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
+
+.separador { 
+  color: #ffcc00; 
+  margin: 0 10px; 
+}
+
+.controles-partida { 
+  display: flex; 
+  justify-content: center; 
+  gap: 15px; 
+  margin-bottom: 15px; 
+}
+
+.controles-partida button {
+  background: #0a1f0f; 
+  border: 2px solid #00ff66; 
+  color: #00ff66;
+  padding: 8px 18px; 
+  font-family: inherit; 
+  font-weight: bold; 
+  cursor: pointer; 
+  border-radius: 4px;
+}
+
+.controles-partida button:hover { 
+  background: #00ff66; 
+  color: #000; 
+  box-shadow: 0 0 10px #00ff66; 
+}
+
+#btn-reset-match, #btn-main-menu { 
+  border-color: #ffcc00; 
+  color: #ffcc00; 
+}
+
+#btn-reset-match:hover, #btn-main-menu:hover { 
+  background: #ffcc00; 
+  color: #000; 
+  box-shadow: 0 0 10px #ffcc00; 
+}
 
 .cuerpo-arena {
-  display: flex; gap: 20px; justify-content: center; align-items: stretch; width: 100%;
+  display: flex; 
+  gap: 20px; 
+  justify-content: center; 
+  align-items: stretch; 
+  width: 100%;
 }
 
+/* ===================================================
+   8. LIENZO VIVIENTE (CANVAS) Y CAJA DE CHAT RADIAL
+   ================================================== */
 #lienzo-pong {
-  background: #020502; border: 2px solid #14331a;
-  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.15); display: block;
+  background: #020502; 
+  border: 2px solid #14331a;
+  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.15); 
+  display: block;
 }
 
-/* CAJA DE CHAT */
 .chat-contenedor {
-  width: 260px; background: #040d05; border: 2px solid #00ff66; border-radius: 4px; display: flex; flex-direction: column;
+  width: 260px; 
+  background: #040d05; 
+  border: 2px solid #00ff66; 
+  border-radius: 4px; 
+  display: flex; 
+  flex-direction: column;
 }
-.chat-cabecera { background: #0a1f0f; border-bottom: 1px solid #00ff66; padding: 8px; font-size: 0.8rem; font-weight: bold; color: #00ff66; }
-.chat-mensajes { flex-grow: 1; padding: 10px; overflow-y: auto; font-size: 0.85rem; text-align: left; display: flex; flex-direction: column; gap: 6px; max-height: 380px; color: #e5ffe9; }
-.chat-mensajes span { color: #ffcc00; font-weight: bold; }
-.chat-input-area { display: flex; border-top: 1px dashed #00ff66; background: #020502; }
-.chat-input-area input { flex-grow: 1; background: transparent; border: none; color: #fff; padding: 10px; font-family: inherit; font-size: 0.8rem; outline: none; }
-.chat-input-area button { background: #0a1f0f; border: none; border-left: 1px solid #00ff66; color: #00ff66; padding: 0 15px; font-family: inherit; font-size: 0.8rem; cursor: pointer; }
-.chat-input-area button:hover { background: #00ff66; color: #000; }
 
-.controles-ayuda { margin-top: 15px; font-size: 0.85rem; color: #497a53; }
+.chat-cabecera { 
+  background: #0a1f0f; 
+  border-bottom: 1px solid #00ff66; 
+  padding: 8px; 
+  font-size: 0.8rem; 
+  font-weight: bold; 
+  color: #00ff66; 
+}
 
-/* FUERZA EL ESTADO INICIAL DE ARRANQUE VISUAL */
-#menu-inicio { display: flex !important; }
-#escenario-juego { display: none !important; }
+.chat-mensajes { 
+  flex-grow: 1; 
+  padding: 10px; 
+  overflow-y: auto; 
+  font-size: 0.85rem; 
+  text-align: left; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+  max-height: 380px; 
+  color: #e5ffe9; 
+}
+
+.chat-mensajes span { 
+  color: #ffcc00; 
+  font-weight: bold; 
+}
+
+.chat-input-area { 
+  display: flex; 
+  border-top: 1px dashed #00ff66; 
+  background: #020502; 
+}
+
+.chat-input-area input { 
+  flex-grow: 1; 
+  background: transparent; 
+  border: none; 
+  color: #fff; 
+  padding: 10px; 
+  font-family: inherit; 
+  font-size: 0.8rem; 
+  outline: none; 
+}
+
+.chat-input-area button { 
+  background: #0a1f0f; 
+  border: none; 
+  border-left: 1px solid #00ff66; 
+  color: #00ff66; 
+  padding: 0 15px; 
+  font-family: inherit; 
+  font-size: 0.8rem; 
+  cursor: pointer; 
+}
+
+.chat-input-area button:hover { 
+  background: #00ff66; 
+  color: #000; 
+}
+
+.controles-ayuda { 
+  margin-top: 15px; 
+  font-size: 0.85rem; 
+  color: #497a53; 
+}
+
+/* ===================================================
+   9. INTERRUPTORES DE FLUJO Y TEXTO DE COPYRIGHT DE FONDO
+   =================================================== */
+#menu-inicio { 
+  display: flex !important; 
+}
+
+#escenario-juego { 
+  display: none !important; 
+}
+
+body::after {
+  content: "© 2026 Cyber Pong Neon. Todos los derechos reservados. Sistema Protegido bajo Licencia MIT.";
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: rgba(0, 255, 102, 0.3);
+  text-align: center;
+  width: 100%;
+  pointer-events: none; /* Inmune a clics fantasmas */
+  z-index: 5;
+}
