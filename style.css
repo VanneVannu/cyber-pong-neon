@@ -17,16 +17,19 @@ body {
   overflow: hidden;
   position: relative;
   
-  /* REPARADO: Forzamos la alineación Flexbox absoluta para que todo el contenido flote simétricamente */
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  /* REPARADO: Desactivamos el Flexbox en el body para que el texto intruso de la derecha pierda su fuerza y se caiga al fondo */
 }
 
 /* ===================================================
-   2. CONTENEDOR ARCADE CENTRAL (BLOQUE MAESTRO CENTRADO)
+   2. CONTENEDOR ARCADE CENTRAL (POSICIONAMIENTO ABSOLUTO FORZADO)
    =================================================== */
 #contenedor-juego {
+  /* ¡CANDADO INDESTRUCTIBLE! Clava el cuadro en el centro exacto de la pantalla ignorando elementos sueltos */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
   width: 90%;
   max-width: 900px;
   background: #09141c;
@@ -41,9 +44,8 @@ body {
   justify-content: center;
   gap: 20px;
   
-  /* REPARADO: Le damos prioridad de capa frontal con z-index alto para recibir clics directos */
-  position: relative; 
-  z-index: 100; 
+  /* ¡PRIORIDAD MÁXIMA DE COLISIÓN! Se coloca por encima de absolutamente todo para recibir clics directos */
+  z-index: 99999; 
 }
 
 /* ===================================================
@@ -63,8 +65,8 @@ body {
   border-radius: 4px;
   transition: all 0.2s ease;
   
-  /* REPARADO: Prioridad de capa máxima para el botón de eyección al portafolio */
-  z-index: 9999; 
+  /* Por encima del contenedor */
+  z-index: 100000; 
   box-shadow: 0 0 10px rgba(255, 204, 0, 0.2);
 }
 
@@ -84,7 +86,7 @@ body {
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
   background-size: 100% 4px, 6px 100%;
   
-  /* REPARADO: Se baja al fondo relativo del mouse para que los botones de adelante reciban los clics */
+  /* Se queda atrás del contenedor del juego */
   z-index: 10; 
   pointer-events: none; 
 }
@@ -130,7 +132,6 @@ body {
   color: #00ff66;
 }
 
-/* CAJAS DE INPUTS Y SELECTORES VECTORIALES */
 #input-alias, #select-diff {
   background: #020803;
   border: 2px solid #ffcc00;
@@ -223,7 +224,6 @@ body {
   font-size: 1.1rem; 
 }
 
-/* BOTÓN DE INTERACCIÓN DE RED SECUNDARIO (DERECHO) */
 .btn-accion-derecho {
   background: #0a1f0f; 
   border: 2px solid #ffcc00; 
@@ -433,9 +433,6 @@ body {
   color: #497a53; 
 }
 
-/* ===================================================
-   9. INTERRUPTORES DE FLUJO Y TEXTO DE COPYRIGHT DE FONDO
-   =================================================== */
 #menu-inicio { 
   display: flex !important; 
 }
@@ -444,17 +441,20 @@ body {
   display: none !important; 
 }
 
-body::after {
-  content: "© 2026 Cyber Pong Neon. Todos los derechos reservados. Sistema Protegido bajo Licencia MIT.";
-  position: absolute;
-  bottom: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: rgba(0, 255, 102, 0.3);
-  text-align: center;
-  width: 100%;
-  pointer-events: none; /* Inmune a clics fantasmas */
-  z-index: 5;
+/* ===================================================
+   9. CORRECCIÓN: TEXTO DEL COPYRIGHT DE FONDO SUBORDINADO
+   =================================================== */
+/* Sometemos al texto intruso del HTML (y al inyectado) a la parte inferior real libre de colisiones */
+body > p, body > div:not(#contenedor-juego), body::after {
+  position: absolute !important;
+  bottom: 15px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  font-family: monospace !important;
+  font-size: 0.75rem !important;
+  color: rgba(0, 255, 102, 0.3) !important;
+  text-align: center !important;
+  width: 100% !important;
+  pointer-events: none !important; /* Destruye el cortafuegos invisible */
+  z-index: 1 !important;
 }
