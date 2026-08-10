@@ -51,12 +51,16 @@ body {
 /* EFECTO CRT PANTALLA RETRO */
 .efecto-crt-lineas {
   position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100vh;
-  background: linear-gradient(rgba(16, 24, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
-  background-size: 100% 4px;
-  z-index: 10;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+  background-size: 100% 4px, 6px 100%;
+  z-index: 100; /* Se mantiene arriba para dar el efecto visual */
+  pointer-events: none; /* ¡CLAVE! Hace que los clics pasen de largo y toquen los botones de abajo */
 }
+
 
 /* CONTENEDOR DE LA MÁQUINA */
 #contenedor-juego {
@@ -73,7 +77,9 @@ body {
   justify-content: center;
   gap: 20px;
   margin: auto 0; /* Distribuye los espacios sobrantes arriba y abajo de forma simétrica */
-  z-index: 5;
+   /* Mantén todas las propiedades de centrado que pusimos antes y asegura estas dos: */
+  position: relative;
+  z-index: 10; /* Se coloca por encima del fondo negro para recibir interacciones */
 }
 
 
@@ -240,18 +246,3 @@ body {
 /* FUERZA EL ESTADO INICIAL DE ARRANQUE VISUAL */
 #menu-inicio { display: flex !important; }
 #escenario-juego { display: none !important; }
-
-/* --- ESTILO PARA EL COPYRIGHT UNIVERSAL (LOBBY Y JUEGO) --- */
-#pie-pagina {
-  width: 100% !important;
-  text-align: center !important;
-  font-size: 10px !important;
-  color: rgba(255, 255, 255, 0.25) !important; /* Blanco sutil para que no distraiga */
-  letter-spacing: 1px !important;
-  padding: 20px 0 !important;
-  font-family: sans-serif !important;
-  text-transform: uppercase !important;
-  margin-top: auto !important; /* Truco para que siempre busque el fondo de la pantalla disponible */
-  position: relative !important;
-  z-index: 10000; /* Asegura que se dibuje por encima del fondo oscuro del lobby */
-}
