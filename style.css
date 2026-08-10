@@ -17,14 +17,12 @@ body {
   background-color: #05020c;
   color: #00ff66;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column; /* Alinea los elementos (botón regresar, contenedor y footer) en columna */
-  justify-content: center; /* Centrado vertical absoluto */
-  align-items: center; /* Centrado horizontal absoluto */
+  margin: 0;
+  padding: 0;
   overflow: hidden;
   position: relative;
-  padding: 20px;
 }
+
 
 
 /* BOTÓN SALIDA FLOTANTE */
@@ -64,23 +62,30 @@ body {
 
 /* CONTENEDOR DE LA MÁQUINA */
 #contenedor-juego {
-  width: 100%;
-  max-width: 900px; /* Ancho máximo ideal para que no se estire de forma descontrolada */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Centrado absoluto perfecto tridimensional */
+  
+  width: 90%;
+  max-width: 900px; 
   background: #09141c; 
   border: 3px solid #00ff66; 
   border-radius: 8px;
   box-shadow: 0 0 25px rgba(0, 255, 102, 0.3);
   padding: 30px;
+  
   display: flex;
   flex-direction: column;
-  align-items: center; /* Fuerza a que los títulos, botones y selectores internos se centren solos */
+  align-items: center; 
   justify-content: center;
   gap: 20px;
-  margin: auto 0; /* Distribuye los espacios sobrantes arriba y abajo de forma simétrica */
-   /* Mantén todas las propiedades de centrado que pusimos antes y asegura estas dos: */
-  position: relative;
-  z-index: 10; /* Se coloca por encima del fondo negro para recibir interacciones */
+  
+  /* ¡CANDADO INDESTRUCTIBLE! Se coloca por encima de absolutamente todo para recibir clics directos */
+  z-index: 999; 
 }
+
+
 
 
 /* REGLA SAGRADA DE INTERCAMBIO DE PANTALLAS */
