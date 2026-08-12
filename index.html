@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stage 03 // Cyber Pong Neon</title>
   <link rel="stylesheet" href="style.css">
-   <!-- ÍCONO DE PESTAÑA DEFINITIVO (MÉTODO TRADICIONAL DEL AJEDREZ) -->
-  <link rel="icon" type="image/png" href="favicon.png">
-
 </head>
 <body>
 
@@ -39,10 +36,12 @@
         </select>
       </div>
 
-      <div class="opciones-modo">
-        <button class="btn-modo" onclick="inicializarModoLocal('ai')">🕹️ PLAY VS AI LOCAL</button>
-        <button class="btn-modo" onclick="inicializarModoLocal('2p')">👥 LOCAL 2 PLAYERS (SAME PC)</button>
+        <div class="opciones-modo">
+        <!-- REPARADO: Quitamos el onclick manual para evitar bloqueos de enlace -->
+        <button class="btn-modo" id="btn-play-ai">🕹️ PLAY VS AI LOCAL</button>
+        <button class="btn-modo" id="btn-play-2p">👥 LOCAL 2 PLAYERS (SAME PC)</button>
       </div>
+
     </section>
 
     <!-- ESCENARIO DE LA ARENA DE COMBATE REAL -->
@@ -74,6 +73,7 @@
 
   <p>© 2026 Cyber Pong Neon. Todos los derechos reservados. Sistema Protegido bajo Licencia MIT.</p>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=10.0"></script>
+
 </body>
 </html>
