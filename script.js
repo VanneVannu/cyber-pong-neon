@@ -231,3 +231,108 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 });
+
+// ====================================================================
+// NÚCLEO DE COMPATIBILIDAD ATÓMICA (BLINDAJE DE NOMBRES Y BOTONES)
+// ====================================================================
+
+// 1. Forzamos el enlace directo con los botones del menú inicial por código
+document.addEventListener("DOMContentLoaded", () => {
+    const btnAI = document.getElementById("btn-play-ai");
+    const btn2P = document.getElementById("btn-play-2p");
+
+    if (btnAI) {
+        btnAI.onclick = function(e) {
+            e.preventDefault();
+            inicializarModoLocal('ai');
+        };
+    }
+    if (btn2P) {
+        btn2P.onclick = function(e) {
+            e.preventDefault();
+            inicializarModoLocal('2p');
+        };
+    }
+});
+
+// 2. Creamos los puentes para los botones de la arena de juego
+// Si el HTML llama a un nombre y el script tiene otro, estas líneas redirigen el comando al instante
+if (typeof conmutarPantallasVisibles_Pong !== 'function') {
+    window.conmutarPantallasVisibles_Pong = function(entrarEnArena) {
+        const menu = document.getElementById('menu-inicio');
+        const escenario = document.getElementById('escenario-juego');
+        if (entrarEnArena) {
+            if (menu) menu.classList.add('oculto');
+            if (escenario) {
+                escenario.classList.remove('oculto');
+                escenario.style.display = 'flex'; // Fuerza la visibilidad de la arena
+            }
+        } else {
+            if (menu) menu.classList.remove('oculto');
+            if (escenario) escenario.classList.add('oculto');
+        }
+    };
+}
+
+if (typeof congelarOSaqueBola !== 'function') {
+    window.congelarOSaqueBola = function() {
+        if (typeof saquearBolaAlCentro === 'function' && !bola.enJuego) {
+            // Si tu script original usa saquearBolaAlCentro o similar para disparar
+            let dirX = Math.random() > 0.5 ? 1 : -1;
+            bola.vx = dirX * 3.8;
+            bola.vy = (Math.random() - 0.5) * 3;
+            bola.enJuego = true;
+            if (typeof sonarTonoRetroMini === 'function') sonarTonoRetroMini(800, 0.08);
+        }
+    };
+}
+
+if (typeof reiniciarMarcadoresArena !== 'function') {
+    window.reiniciarMarcadoresArena = function() {
+        scoreP1 = 0; scoreP2 = 0;
+        const s1 = document.getElementById('score-p1');
+        const s2 = document.getElementById('score-p2');
+        if (s1) s1.innerText = "0";
+        if (s2) s2.innerText = "0";
+        p1.y = 162; p2.y = 162;
+        bola.x = canvas.width / 2;
+        bola.y = canvas.height / 2;
+        bola.vx = 0; bola.vy = 0;
+        bola.enJuego = false;
+        if (typeof sonarTonoRetroMini === 'function') sonarTonoRetroMini(250, 0.25);
+    };
+}
+
+if (typeof regresarAlMenuInicial_Pong !== 'function') {
+    window.regresarAlMenuInicial_Pong = function() {
+        if (typeof conmutarPantallasVisibles_Pong === 'function') {
+            conmutarPantallasVisibles_Pong(false);
+        }
+    };
+}
+
+// 3. Completamos la lógica interna de inicializarModoLocal por si quedó a medias en el archivo
+const originalInicializarModoLocal = window.inicializarModoLocal;
+window.inicializarModoLocal = function(modoElegido) {
+    modoActual = modoElegido;
+    aliasJugadorLocal = document.getElementById('input-alias').value.trim() || "PLAYER_1";
+    dificultadIa = document.getElementById('select-diff').value;
+
+    const lblP1 = document.getElementById('label-p1');
+    const lblP2 = document.getElementById('label-p2');
+    const txtGuia = document.getElementById('txt-guia-controles');
+
+    if (lblP1) lblP1.innerText = aliasJugadorLocal;
+
+    if (modoActual === 'ai') {
+        if (lblP2) lblP2.innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
+        if (txtGuia) txtGuia.innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
+    } else {
+        if (lblP2) lblP2.innerText = "PLAYER_2 👥";
+        if (txtGuia) txtGuia.innerText = "P1: [W/S] MOVE UP/DOWN  ||  P2: [▲/▼] ARROW KEYS MOVE";
+    }
+    
+    if (typeof conmutarPantallasVisibles_Pong === 'function') conmutarPantallasVisibles_Pong(true);
+    if (typeof reiniciarMarcadoresArena === 'function') reiniciarMarcadoresArena();
+};
+
