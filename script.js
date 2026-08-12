@@ -18,7 +18,7 @@ const p1 = { x: 20, y: 162 };
 const p2 = { x: 568, y: 162 };
 const bola = { x: 300, y: 200, radio: 6, vx: 0, vy: 0, enJuego: false };
 
-const velocidadPaleta = 6; // Un poco más rápida para compensar el teclado compartido
+const velocidadPaleta = 6; // Velocidad óptima arcade para el teclado compartido
 const teclasPresionadas = {};
 
 // ===================================================
@@ -34,15 +34,19 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => teclasPresionadas[e.key.toLowerCase()] = false);
 
 // ===================================================
-// INICIALIZADORES DEL JUEGO LOCAL GABINETE
+// INICIALIZADORES DEL JUEGO LOCAL GABINETE (REPARADO)
 // ===================================================
 function inicializarModoLocal(modoElegido) {
+    // Sincronizamos de forma exacta el modo con lo que envían tus botones en el HTML
     modoActual = modoElegido; // Guarda 'ai' o '2p'
+    
+    // Capturamos los elementos del formulario neón
     aliasJugadorLocal = document.getElementById('input-alias').value.trim() || "PLAYER_1";
     dificultadIa = document.getElementById('select-diff').value;
 
     document.getElementById('label-p1').innerText = aliasJugadorLocal;
 
+    // Aplicamos los cambios estéticos de rango según el modo
     if (modoActual === 'ai') {
         document.getElementById('label-p2').innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
         document.getElementById('txt-guia-controles').innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
@@ -54,6 +58,7 @@ function inicializarModoLocal(modoElegido) {
     conmutarPantallasVisibles_Pong(true);
     reiniciarMarcadoresArena();
 }
+
 
 // ===================================================
 // MOTOR FÍSICO RECURSIVO LOCAL (CORE LOOP)
