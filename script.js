@@ -1,248 +1,205 @@
-/ CONSTANTES Y CONFIGURACIÓN DEL LIENZO
+// ===================================================
+// VARIABLES DEL MOTOR FÍSICO LOCAL INDESTRUCTIBLE
+// ===================================================
 const canvas = document.getElementById('lienzo-pong');
 const ctx = canvas.getContext('2d');
 
-let modoActual = ''; // 'ia', 'local', 'online'
-let peer = null;
-let conexionOnline = null;
-let miPeerId = '';
-let soyHost = false;
+let scoreP1 = 0;
+let scoreP2 = 0;
+let modoActual = 'ai'; // 'ai' o '2p'
+let dificultadIa = 'medium'; 
+let aliasJugadorLocal = "PLAYER_1";
 
-// PARÁMETROS FÍSICOS DE LOS OBJETOS
-const paletaAncho = 12, paletaAlto = 90;
-const p1 = { x: 20, y: canvas.height / 2 - paletaAlto / 2, score: 0 };
-const p2 = { x: canvas.width - 20 - paletaAncho, y: canvas.height / 2 - paletaAlto / 2, score: 0 };
-const pelota = { x: canvas.width / 2, y: canvas.height / 2, radio: 7, vx: 5, vy: 3, velocidadBase: 6 };
+// Paletas vectoriales
+const paletaAncho = 12;
+const paletaAlto = 75;
 
-// CAPTURA DE TECLADO
-const teclas = {};
-window.addEventListener('keydown', e => teclas[e.key] = true);
-window.addEventListener('keyup', e => teclas[e.key] = false);
+const p1 = { x: 20, y: 162 };
+const p2 = { x: 568, y: 162 };
+const bola = { x: 300, y: 200, radio: 6, vx: 0, vy: 0, enJuego: false };
 
-// CONFIGURACIÓN DE LA INTELIGENCIA ARTIFICIAL (Velocidades de seguimiento)
-const IA_CONFIG = { easy: 2.5, medium: 4.5, hard: 7.5 };
-let velocidadIA = 4.5;
+const velocidadPaleta = 6; // Un poco más rápida para compensar el teclado compartido
+const teclasPresionadas = {};
 
-// INICIALIZACIÓN DEL SISTEMA RED P2P (PeerJS)
-function inicializarPeerJS() {
-    peer = new Peer();
-    peer.on('open', id => {
-        miPeerId = id;
-        document.getElementById('mi-id').innerText = id;
-    });
-    peer.on('connection', conn => {
-        conexionOnline = conn;
-        soyHost = true;
-        configurarEventosConexion();
-    });
-}
+// ===================================================
+// CAPTURA DE TECLADO MULTIBOTÓN SIMULTÁNEO
+// ===================================================
+window.addEventListener('keydown', e => {
+    teclasPresionadas[e.key.toLowerCase()] = true;
+    // Evitamos el scroll de la ventana al usar los controles
+    if ([" ", "arrowup", "arrowdown", "w", "s"].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+    }
+});
+window.addEventListener('keyup', e => teclasPresionadas[e.key.toLowerCase()] = false);
 
-// CONTROLADORES DE INTERFAZ DEL MENÚ
-function seleccionarModo(modo) {
-    modoActual = modo;
-    velocidadIA = IA_CONFIG[document.getElementById('select-diff').value];
+// ===================================================
+// INICIALIZADORES DEL JUEGO LOCAL GABINETE
+// ===================================================
+function inicializarModoLocal(modoElegido) {
+    modoActual = modoElegido; // Guarda 'ai' o '2p'
+    aliasJugadorLocal = document.getElementById('input-alias').value.trim() || "PLAYER_1";
+    dificultadIa = document.getElementById('select-diff').value;
 
-    if (modo === 'online') {
-        document.getElementById('panel-online').classList.remove('oculto');
-        if (!peer) inicializarPeerJS();
+    document.getElementById('label-p1').innerText = aliasJugadorLocal;
+
+    if (modoActual === 'ai') {
+        document.getElementById('label-p2').innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
+        document.getElementById('txt-guia-controles').innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
     } else {
-        arrancarEscenarioJuego();
-    }
-}
-
-function conectarAEnemigo() {
-    const idEnemigo = document.getElementById('input-peer-id').value.trim();
-    if (!idEnemigo) return;
-    
-    document.getElementById('estado-conexion').innerText = "Syncing network nodes...";
-    conexionOnline = peer.connect(idEnemigo);
-    soyHost = false;
-    configurarEventosConexion();
-}
-
-function configurarEventosConexion() {
-    conexionOnline.on('open', () => {
-        document.getElementById('estado-conexion').innerText = "SYNCHRONIZATION COMPLETED!";
-        setTimeout(() => arrancarEscenarioJuego(), 1000);
-    });
-    conexionOnline.on('data', data => procesarDatosRed(data));
-}
-
-function arrancarEscenarioJuego() {
-    document.getElementById('menu-inicio').classList.add('oculto');
-    document.getElementById('escenario-juego').classList.remove('oculto');
-    
-    if(modoActual === 'online') {
-        document.getElementById('ayuda-teclado').innerText = soyHost ? "ONLINE: You are P1 (W/S)" : "ONLINE: You are P2 (Flechas ↑/↓)";
-    } else if(modoActual === 'ia') {
-        document.getElementById('ayuda-teclado').innerText = "CONTROLS: P1 (W/S) vs COGNITIVE BOT";
+        document.getElementById('label-p2').innerText = "PLAYER_2 👥";
+        document.getElementById('txt-guia-controles').innerText = "P1: [W/S] MOVE UP/DOWN  ||  P2: [▲/▼] ARROW KEYS MOVE";
     }
     
-    resetPelota();
-    requestAnimationFrame(buclePrincipalJuego);
+    conmutarPantallasVisibles_Pong(true);
+    reiniciarMarcadoresArena();
 }
 
-// LÓGICA RED MULTIJUGADOR
-function enviarDatosRed() {
-    if (!conexionOnline || !conexionOnline.open) return;
-    if (soyHost) {
-        conexionOnline.send({ p1Y: p1.y, pelotaX: pelota.x, pelotaY: pelota.y, s1: p1.score, s2: p2.score });
+// ===================================================
+// MOTOR FÍSICO RECURSIVO LOCAL (CORE LOOP)
+// ===================================================
+function actualizarFisicasLocales() {
+    if (!p1 || !p2 || !bola) return;
+
+    // 1. CONTROL JUGADOR 1 (SIEMPRE CON 'W' / 'S')
+    if (teclasPresionadas['w']) p1.y = Math.max(5, p1.y - velocidadPaleta);
+    if (teclasPresionadas['s']) p1.y = Math.min(canvas.height - paletaAlto - 5, p1.y + velocidadPaleta);
+
+    // 2. FILTRO DE CONTROL PALETA DERECHA (JUGADOR 2 o INTELIGENCIA ARTIFICIAL)
+    if (modoActual === '2p') {
+        // MODO DOS JUGADORES: Captura las flechas físicas ArrowUp y ArrowDown
+        if (teclasPresionadas['arrowup']) p2.y = Math.max(5, p2.y - velocidadPaleta);
+        if (teclasPresionadas['arrowdown']) p2.y = Math.min(canvas.height - paletaAlto - 5, p2.y + velocidadPaleta);
     } else {
-        conexionOnline.send({ p2Y: p2.y });
-    }
-}
-
-function procesarDatosRed(data) {
-    if (soyHost && data.p2Y !== undefined) p2.y = data.p2Y;
-    if (!soyHost) {
-        if (data.p1Y !== undefined) p1.y = data.p1Y;
-        if (data.pelotaX !== undefined) { pelota.x = data.pelotaX; pelota.y = data.pelotaY; }
-        if (data.s1 !== undefined) { p1.score = data.s1; p2.score = data.s2; actualizarMarcador(); }
-    }
-}
-
-// MOTOR FÍSICO Y ACTUALIZACIONES DE COORDENADAS
-function actualizar() {
-    // Control Jugador 1 (W/S) - Activo en Local, IA y si es Host Online
-    if (modoActual !== 'online' || soyHost) {
-        if (teclas['w'] || teclas['W']) p1.y = Math.max(10, p1.y - 6);
-        if (teclas['s'] || teclas['S']) p1.y = Math.min(canvas.height - paletaAlto - 10, p1.y + 6);
+        // MODO INTELIGENCIA ARTIFICIAL: Persigue la bola de forma algorítmica calibrada
+        let velocidadIa = dificultadIa === 'easy' ? 2.5 : dificultadIa === 'medium' ? 4.2 : 5.8;
+        let centroPaletaIa = p2.y + paletaAlto / 2;
+        if (bola.vx > 0) {
+            if (bola.y < centroPaletaIa - 10) p2.y = Math.max(5, p2.y - velocidadIa);
+            else if (bola.y > centroPaletaIa + 10) p2.y = Math.min(canvas.height - paletaAlto - 5, p2.y + velocidadIa);
+        }
     }
 
-    // Control Jugador 2 (Flechas) - Activo en Local y si es Cliente Online
-    if (modoActual === 'local' || (modoActual === 'online' && !soyHost)) {
-        if (teclas['ArrowUp']) p2.y = Math.max(10, p2.y - 6);
-        if (teclas['ArrowDown']) p2.y = Math.min(canvas.height - paletaAlto - 10, p2.y + 6);
-    }
+    // 3. FÍSICAS REBOTE BALÍSTICO DE LA BOLA
+    if (bola.enJuego) {
+        bola.x += bola.vx;
+        bola.y += bola.vy;
 
-    // LÓGICA DE COMPUTADORA VS IA INTELIGENTE
-    if (modoActual === 'ia') {
-        let centroPaleta = p2.y + paletaAlto / 2;
-        let destinoY = pelota.y;
-        
-        // La IA rastrea la pelota solo cuando viene hacia su mitad de campo
-        if (pelota.vx > 0) {
-            if (centroPaleta < destinoY - 10) {
-                p2.y = Math.min(canvas.height - paletaAlto - 10, p2.y + velocidadIA);
-            } else if (centroPaleta > destinoY + 10) {
-                p2.y = Math.max(10, p2.y - velocidadIA);
+        // Rebote con Techo y Piso
+        if (bola.y - bola.radio <= 0 || bola.y + bola.radio >= canvas.height) {
+            bola.vy *= -1;
+            sonarTonoRetroMini(400, 0.04);
+        }
+
+        // Rebote Paleta 1 (Izquierda)
+        if (bola.vx < 0 && bola.x - bola.radio <= p1.x + paletaAncho && bola.x + bola.radio >= p1.x) {
+            if (bola.y >= p1.y && bola.y <= p1.y + paletaAlto) {
+                bola.vx *= -1.05; // Aceleración orbital arcade
+                let deltaY = bola.y - (p1.y + paletaAlto / 2);
+                bola.vy = deltaY * 0.22;
+                sonarTonoRetroMini(600, 0.05);
             }
         }
+
+        // Rebote Paleta 2 (Derecha)
+        if (bola.vx > 0 && bola.x + bola.radio >= p2.x && bola.x - bola.radio <= p2.x + paletaAncho) {
+            if (bola.y >= p2.y && bola.y <= p2.y + paletaAlto) {
+                bola.vx *= -1.05;
+                let deltaY = bola.y - (p2.y + paletaAlto / 2);
+                bola.vy = deltaY * 0.22;
+                sonarTonoRetroMini(650, 0.05);
+            }
+        }
+
+        // Detección de Anotación de Puntos
+        if (bola.x < 0) { scoreP2++; saquearBolaAlCentro(1); }
+        else if (bola.x > canvas.width) { scoreP1++; saquearBolaAlCentro(-1); }
     }
-
-    // FÍSICAS DE LA PELOTA (El Host calcula la pelota de forma centralizada en Online)
-    if (modoActual !== 'online' || soyHost) {
-        pelota.x += pelota.x === canvas.width / 2 && pelota.y === canvas.height / 2 ? 0 : pelota.vx;
-        pelota.y += pelota.x === canvas.width / 2 && pelota.y === canvas.height / 2 ? 0 : pelota.vy;
-
-        // Rebotes Techo y Piso
-        if (pelota.y - pelota.radio <= 0 || pelota.y + pelota.radio >= canvas.height) {
-            pelota.vy = -pelota.vy;
-            sonarTonoRetro(300, 0.05); // Sonido rápido de rebote
-        }
-
-        // Colisión Paleta 1
-        if (pelota.vx < 0 && pelota.x - pelota.radio <= p1.x + paletaAncho && pelota.y >= p1.y && pelota.y <= p1.y + paletaAlto) {
-            calcularReboteAngulo(p1);
-        }
-
-        // Colisión Paleta 2
-        if (pelota.vx > 0 && pelota.x + pelota.radio >= p2.x && pelota.y >= p2.y && pelota.y <= p2.y + paletaAlto) {
-            calcularReboteAngulo(p2);
-        }
-
-        // Goles y Anotación
-        if (pelota.x < 0) { p2.score++; responderPunto(); }
-        else if (pelota.x > canvas.width) { p1.score++; responderPunto(); }
-    }
-
-    enviarDatosRed();
 }
 
-function calcularReboteAngulo(paleta) {
-    let impactoRelativo = (pelota.y - (paleta.y + paletaAlto / 2)) / (paletaAlto / 2);
-    let anguloGiro = impactoRelativo * (Math.PI / 4); // Máximo 45 grados de desviación
-    let direccion = pelota.vx > 0 ? -1 : 1;
-
-    // Aceleración de velocidad progresiva del juego arcade
-    let velocidadActual = Math.sqrt(pelota.vx * pelota.vx + pelota.vy * pelota.vy) + 0.3;
-    
-    pelota.vx = direccion * velocidadActual * Math.cos(anguloGiro);
-    pelota.vy = velocidadActual * Math.sin(anguloGiro);
-    sonarTonoRetro(600, 0.08); // Tono agudo al golpear raqueta
-}
-
-function responderPunto() {
-    actualizarMarcador();
-    sonarTonoRetro(150, 0.3); // Sonido grave de anotación
-    resetPelota();
-}
-
-function actualizarMarcador() {
-    document.getElementById('score-p1').innerText = p1.score.toString().padStart(2, '0');
-    document.getElementById('score-p2').innerText = p2.score.toString().padStart(2, '0');
-}
-
-function resetPelota() {
-    pelota.x = canvas.width / 2;
-    pelota.y = canvas.height / 2;
-    // Disparo inicial aleatorio
-    pelota.vx = (Math.random() > 0.5 ? 1 : -1) * pelota.velocidadBase;
-    pelota.vy = (Math.random() > 0.5 ? 1 : -1) * (pelota.velocidadBase - 2);
-}
-
-// RENDERIZADO VISUAL CON ESTILO VECTORES NEÓN (Verde y Amarillo)
-function dibujar() {
+function dibujarArenaVectores() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Línea divisoria central punteada militar
-    ctx.strokeStyle = 'rgba(0, 255, 102, 0.15)';
-    ctx.lineWidth = 4;
-    ctx.setLineDash([15, 15]);
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, 0);
-    ctx.lineTo(canvas.width / 2, canvas.height);
-    ctx.stroke();
-    ctx.setLineDash([]); // Reset line dash
+    // Malla divisoria central
+    ctx.strokeStyle = "rgba(0, 255, 102, 0.15)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
 
-    // Dibujar Paleta 1 (Verde Fósforo)
-    ctx.fillStyle = '#00ff66';
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = '#00ff66';
+    // Dibujamos las Paletas en Verde Neón Fósforo
+    ctx.fillStyle = "#00ff66"; ctx.shadowBlur = 10; ctx.shadowColor = "#00ff66";
     ctx.fillRect(p1.x, p1.y, paletaAncho, paletaAlto);
-
-    // Dibujar Paleta 2 (Verde Fósforo)
     ctx.fillRect(p2.x, p2.y, paletaAncho, paletaAlto);
 
-    // Dibujar Pelota (Amarillo Eléctrico)
-    ctx.fillStyle = '#ffcc00';
-    ctx.shadowColor = '#ffcc00';
-    ctx.beginPath();
-    ctx.arc(pelota.x, pelota.y, pelota.radio, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0; // Limpiar brillo para evitar baja de FPS
+    // Dibujamos la Bola en Ámbar brillante
+    if (bola.enJuego) {
+        ctx.fillStyle = "#ffcc00"; ctx.shadowColor = "#ffcc00";
+        ctx.beginPath(); ctx.arc(bola.x, bola.y, bola.radio, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.shadowBlur = 0; // Apagamos sombras pesadas para estabilizar FPS
 }
 
-// SINTETIZADOR DE AUDIO RETRO DE CONSOLA BEEP INTEGRADO (Web Audio API)
-function sonarTonoRetro(frecuencia, duracion) {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    
-    osc.type = 'square'; // Sonido cuadrado ultra retro de 8 bits
-    osc.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duracion);
-    
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + duracion);
+function congelarOSaqueBola() {
+    if (bola.enJuego) return;
+
+    // Dirección inicial aleatoria del saque
+    let dirX = Math.random() > 0.5 ? 1 : -1;
+    bola.vx = dirX * 3.8;
+    bola.vy = (Math.random() - 0.5) * 3;
+    bola.enJuego = true;
+
+    sonarTonoRetroMini(800, 0.08);
 }
 
-// BUCLE DINÁMICO DE RENDERIZACIÓN A 60FPS
-function buplePrincipalJuego() {
-    actualizar();
-    dibujar();
-    requestAnimationFrame(buplePrincipalJuego);
+function saquearBolaAlCentro(direccion) {
+    bola.x = canvas.width / 2;
+    bola.y = canvas.height / 2;
+    bola.vx = 0; bola.vy = 0;
+    bola.enJuego = false;
+    
+    document.getElementById('score-p1').innerText = scoreP1;
+    document.getElementById('score-p2').innerText = scoreP2;
+    sonarTonoRetroMini(250, 0.25); // Pitido grave de anotación
 }
+
+function reiniciarMarcadoresArena() {
+    scoreP1 = 0; scoreP2 = 0;
+    document.getElementById('score-p1').innerText = "0";
+    document.getElementById('score-p2').innerText = "0";
+    p1.y = 162; p2.y = 162;
+    saquearBolaAlCentro(1);
+}
+
+function conmutarPantallasVisibles_Pong(entrarEnArena) {
+    if (entrarEnArena) {
+        document.getElementById('menu-inicio').classList.add('oculto');
+        document.getElementById('escenario-juego').classList.remove('oculto');
+    } else {
+        document.getElementById('menu-inicio').classList.remove('oculto');
+        document.getElementById('escenario-juego').classList.add('oculto');
+    }
+}
+
+function regresarAlMenuInicial_Pong() {
+    conmutarPantallasVisibles_Pong(false);
+}
+
+function sonarTonoRetroMini(f, d) {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + d);
+    } catch(e){}
+}
+
+// BUCLE DE FOTOGRAMAS ETERNO 60 FPS LOCAL
+function bucleFisicoEterno_Pong() {
+    actualizarFisicasLocales();
+    dibujarArenaVectores();
+    requestAnimationFrame(bucleFisicoEterno_Pong);
+}
+bucleFisicoEterno_Pong();
