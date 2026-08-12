@@ -163,3 +163,10 @@ body > p {
   text-align: center !important; width: 100% !important; pointer-events: none !important; z-index: 1 !important;
 }
 
+/* PARCHE DE FUERZA BRUTA: Desbloquea los clics de los botones del menú de inmediato */
+.btn-modo, .btn-accion, #select-diff, #input-alias, button, select, input {
+  position: relative !important;
+  z-index: 1000000 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
