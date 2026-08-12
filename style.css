@@ -1,167 +1,83 @@
-/* ===================================================
-   1. RESETEO RETRO Y CONFIGURACIÓN MAESTRA DEL BODY
-   =================================================== */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+  font-family: 'Share Tech Mono', monospace;
 }
 
 body {
-  background-color: #05020c;
-  color: #00ff66;
+  background-color: #030704; /* Fondo negro verdoso ultra oscuro */
+  color: #e5ffe9;
   min-height: 100vh;
-  margin: 0;
-  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   overflow: hidden;
   position: relative;
-  
-  /* REPARADO: Desactivamos el Flexbox en el body para que el texto intruso de la derecha pierda su fuerza y se caiga al fondo */
 }
 
-/* ===================================================
-   2. CONTENEDOR ARCADE CENTRAL (POSICIONAMIENTO ABSOLUTO FORZADO)
-   =================================================== */
-#contenedor-juego {
-  /* ¡CANDADO INDESTRUCTIBLE! Clava el cuadro en el centro exacto de la pantalla ignorando elementos sueltos */
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  
-  width: 90%;
-  max-width: 900px;
-  background: #09141c;
-  border: 3px solid #00ff66;
-  border-radius: 8px;
-  box-shadow: 0 0 25px rgba(0, 255, 102, 0.3);
-  padding: 30px;
-  
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  
-  /* ¡PRIORIDAD MÁXIMA DE COLISIÓN! Se coloca por encima de absolutamente todo para recibir clics directos */
-  z-index: 99999; 
-}
-
-/* ===================================================
-   3. BOTÓN SALIDA FLOTANTE Y CAPAS DE FILTRO CRT
-   =================================================== */
+/* BOTÓN SALIDA A LA CABINA (Mantiene el toque Synth Joy para coherencia) */
 .btn-regresar-arcade {
   position: fixed;
   top: 15px;
   left: 15px;
   background: #09140b;
-  border: 2px solid #ffcc00;
+  border: 2px solid #ffcc00; /* Amarillo arcade */
   color: #ffcc00;
   padding: 8px 14px;
   text-decoration: none;
   font-size: 0.85rem;
   font-weight: bold;
   border-radius: 4px;
-  transition: all 0.2s ease;
-  
-  /* Por encima del contenedor */
-  z-index: 100000; 
+  z-index: 9999;
   box-shadow: 0 0 10px rgba(255, 204, 0, 0.2);
+  transition: all 0.2s ease;
 }
-
 .btn-regresar-arcade:hover {
-  background: #ffcc00; 
-  color: #000; 
+  background: #ffcc00;
+  color: #000;
   box-shadow: 0 0 15px #ffcc00;
 }
 
-/* EFECTO CRT PANTALLA RETRO */
+/* EFECTO CRT PANTALLA TUBO FÓSFORO */
 .efecto-crt-lineas {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
-  background-size: 100% 4px, 6px 100%;
-  
-  /* Se queda atrás del contenedor del juego */
-  z-index: 10; 
-  pointer-events: none; 
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: linear-gradient(rgba(16, 24, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
+  background-size: 100% 4px;
+  z-index: 10;
+  pointer-events: none;
 }
 
-/* ===================================================
-   4. ESTRUCTURAS DE INTERFAZ DEL MENÚ INICIAL
-   =================================================== */
-.oculto { 
-  display: none !important; 
-}
-
-#menu-inicio {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  gap: 20px;
+#contenedor-juego {
+  background: #061208; /* Verde militar oscuro */
+  border: 3px solid #00ff66; /* Verde neón/fósforo */
+  border-radius: 8px;
+  padding: 40px;
+  box-shadow: 0 0 30px rgba(0, 255, 102, 0.2);
   text-align: center;
 }
 
 .titulo-neon {
   font-size: 3.5rem;
-  color: #ffcc00;
+  color: #ffcc00; /* Amarillo eléctrico */
   text-shadow: 0 0 10px #ffcc00, 0 0 20px rgba(0, 255, 102, 0.5);
   letter-spacing: 5px;
 }
 
 .subtitulo {
-  color: #00ff66;
+  color: #00ff66; /* Verde fósforo */
   letter-spacing: 2px;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   font-size: 0.9rem;
 }
 
-.seccion-alias, .selector-dificultad {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  text-align: left;
-  width: 320px;
-  font-size: 0.9rem;
-  color: #00ff66;
-}
-
-#input-alias, #select-diff {
-  background: #020803;
-  border: 2px solid #ffcc00;
-  color: #fff;
-  padding: 10px;
-  font-family: inherit;
-  font-weight: bold;
-  border-radius: 4px;
-  outline: none;
-}
-
-#select-diff { 
-  border-color: #00ff66; 
-  color: #00ff66; 
-  cursor: pointer; 
-}
-
-#select-diff option { 
-  background: #061208; 
-}
-
-/* ===================================================
-   5. BOTONES DE ACCIÓN Y MENÚS DE MODO ARCADE
-   =================================================== */
 .opciones-modo {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px;
   width: 320px;
-  margin-top: 10px;
+  margin: 0 auto;
 }
 
 .btn-modo, .btn-accion {
@@ -177,284 +93,99 @@ body {
 }
 
 .btn-modo:hover, .btn-accion:hover {
-  background: #00ff66; 
-  color: #000; 
+  background: #00ff66;
+  color: #000;
   box-shadow: 0 0 15px #00ff66;
 }
 
-/* ===================================================
-   6. PANEL DE CONTROL ONLINE DE PARTIDAS HORIZONTALES
-   =================================================== */
+.oculto { display: none !important; }
+
+/* MENÚ ONLINE */
 #panel-online {
-  width: 450px;
-  margin-top: 15px;
+  margin-top: 20px;
+  animation: desplegar 0.3s ease-out;
 }
 
 .linea-division {
-  border-top: 1px dashed #ffcc00; 
-  margin: 15px 0;
+  border-top: 1px dashed #ffcc00;
+  margin: 20px 0;
 }
 
-.area-generacion-horizontal {
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center;
-  background: #020803; 
-  border: 1px dashed #14331a; 
-  padding: 12px 20px;
-  border-radius: 4px; 
-  margin-bottom: 15px; 
-  width: 100%;
-}
-
-.bloque-id-izquierdo { 
-  display: flex; 
-  flex-direction: column; 
-  text-align: left; 
-}
-
-.etiqueta-sistema { 
-  font-size: 0.8rem; 
-  color: #497a53; 
-}
-
-.resaltado { 
-  color: #ffcc00; 
-  font-weight: bold; 
-  font-size: 1.1rem; 
-}
-
-.btn-accion-derecho {
-  background: #0a1f0f; 
-  border: 2px solid #ffcc00; 
+.resaltado {
   color: #ffcc00;
-  padding: 8px 14px; 
-  font-size: 0.85rem; 
-  font-family: inherit;
-  font-weight: bold; 
-  cursor: pointer; 
-  border-radius: 4px;
+  font-weight: bold;
 }
 
-.btn-accion-derecho:hover { 
-  background: #ffcc00; 
-  color: #000; 
-  box-shadow: 0 0 10px #ffcc00; 
-}
-
-.btn-accion-derecho:disabled { 
-  border-color: #00ff66; 
-  color: #00ff66; 
-  background: #041408; 
-}
-
-.inputs-online { 
-  display: flex; 
-  gap: 10px; 
-  justify-content: center; 
-  margin-bottom: 10px; 
+.inputs-online {
+  margin: 15px 0;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
 }
 
 #input-peer-id {
-  background: #020803; 
-  border: 2px solid #ffcc00; 
+  background: #020803;
+  border: 2px solid #ffcc00;
   color: #fff;
-  padding: 10px; 
-  font-family: inherit; 
-  border-radius: 4px; 
-  text-align: center; 
+  padding: 10px;
+  font-family: inherit;
+  border-radius: 4px;
+  outline: none;
   width: 180px;
+  text-align: center;
 }
 
-/* ===================================================
-   7. ESCENARIO DE LA ARENA DE COMBATE REAL
-   =================================================== */
-#escenario-juego {
+/* LIENZO DE JUEGO (La pantalla de vectores) */
+#lienzo-pong {
+  background: #020502;
+  border: 2px solid #14331a;
+  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.1);
+  display: block;
+  margin-top: 15px;
+}
+
+.marcador {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 255, 102, 0.3);
+}
+.separador { color: #ffcc00; }
+
+.controles-ayuda {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #497a53;
+}
+
+@keyframes desplegar {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* SELECTOR DE DIFICULTAD VECTORES */
+.selector-dificultad {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  gap: 5px;
+  text-align: left;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: #ffcc00;
 }
 
-.cabecera-arena {
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center;
-  margin-bottom: 15px; 
-  border-bottom: 1px dashed #00ff66; 
-  padding-bottom: 10px;
-}
-
-.nombre-marcador { 
-  font-size: 1.3rem; 
-  color: #ffcc00; 
-  font-weight: bold; 
-  width: 200px; 
-}
-
-#label-p1 { text-align: left; }
-#label-p2 { text-align: right; }
-
-.marcador { 
-  font-size: 3rem; 
-  font-weight: bold; 
-  color: #fff; 
-}
-
-.separador { 
-  color: #ffcc00; 
-  margin: 0 10px; 
-}
-
-.controles-partida { 
-  display: flex; 
-  justify-content: center; 
-  gap: 15px; 
-  margin-bottom: 15px; 
-}
-
-.controles-partida button {
-  background: #0a1f0f; 
-  border: 2px solid #00ff66; 
+#select-diff {
+  background: #020803;
+  border: 2px solid #00ff66;
   color: #00ff66;
-  padding: 8px 18px; 
-  font-family: inherit; 
-  font-weight: bold; 
-  cursor: pointer; 
+  padding: 8px;
+  font-family: inherit;
+  font-weight: bold;
   border-radius: 4px;
+  outline: none;
+  cursor: pointer;
 }
-
-.controles-partida button:hover { 
-  background: #00ff66; 
-  color: #000; 
-  box-shadow: 0 0 10px #00ff66; 
-}
-
-#btn-reset-match, #btn-main-menu { 
-  border-color: #ffcc00; 
-  color: #ffcc00; 
-}
-
-#btn-reset-match:hover, #btn-main-menu:hover { 
-  background: #ffcc00; 
-  color: #000; 
-  box-shadow: 0 0 10px #ffcc00; 
-}
-
-.cuerpo-arena {
-  display: flex; 
-  gap: 20px; 
-  justify-content: center; 
-  align-items: stretch; 
-  width: 100%;
-}
-
-/* ===================================================
-   8. LIENZO VIVIENTE (CANVAS) Y CAJA DE CHAT RADIAL
-   ================================================== */
-#lienzo-pong {
-  background: #020502; 
-  border: 2px solid #14331a;
-  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.15); 
-  display: block;
-}
-
-.chat-contenedor {
-  width: 260px; 
-  background: #040d05; 
-  border: 2px solid #00ff66; 
-  border-radius: 4px; 
-  display: flex; 
-  flex-direction: column;
-}
-
-.chat-cabecera { 
-  background: #0a1f0f; 
-  border-bottom: 1px solid #00ff66; 
-  padding: 8px; 
-  font-size: 0.8rem; 
-  font-weight: bold; 
-  color: #00ff66; 
-}
-
-.chat-mensajes { 
-  flex-grow: 1; 
-  padding: 10px; 
-  overflow-y: auto; 
-  font-size: 0.85rem; 
-  text-align: left; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 6px; 
-  max-height: 380px; 
-  color: #e5ffe9; 
-}
-
-.chat-mensajes span { 
-  color: #ffcc00; 
-  font-weight: bold; 
-}
-
-.chat-input-area { 
-  display: flex; 
-  border-top: 1px dashed #00ff66; 
-  background: #020502; 
-}
-
-.chat-input-area input { 
-  flex-grow: 1; 
-  background: transparent; 
-  border: none; 
-  color: #fff; 
-  padding: 10px; 
-  font-family: inherit; 
-  font-size: 0.8rem; 
-  outline: none; 
-}
-
-.chat-input-area button { 
-  background: #0a1f0f; 
-  border: none; 
-  border-left: 1px solid #00ff66; 
-  color: #00ff66; 
-  padding: 0 15px; 
-  font-family: inherit; 
-  font-size: 0.8rem; 
-  cursor: pointer; 
-}
-
-.chat-input-area button:hover { 
-  background: #00ff66; 
-  color: #000; 
-}
-
-.controles-ayuda { 
-  margin-top: 15px; 
-  font-size: 0.85rem; 
-  color: #497a53; 
-}
-
-#menu-inicio { 
-  display: flex !important; 
-}
-
-#escenario-juego { 
-  display: none !important; 
-}
-
-/* ===================================================
-   9. CORRECCIÓN: TEXTO DEL COPYRIGHT DE FONDO SUBORDINADO
-   =================================================== */
-/* Sometemos al texto intruso del HTML (y al inyectado) a la parte inferior real libre de colisiones */
-body > p, body > div:not(#contenedor-juego), body::after {
-  position: absolute !important;
-  bottom: 15px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  font-family: monospace !important;
-  font-size: 0.75rem !important;
-  color: rgba(0, 255, 102, 0.3) !important;
-  text-align: center !important;
-  width: 100% !important;
-  pointer-events: none !important; /* Destruye el cortafuegos invisible */
-  z-index: 1 !important;
+#select-diff option {
+  background: #061208;
+  color: #00ff66;
 }
