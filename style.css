@@ -27,7 +27,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   width: 95%;
-  max-width: 720px; /* Al no haber chat lateral, lo encogimos para que sea compacto y estético */
+  max-width: 720px;
   background: #09141c;
   border: 3px solid #00ff66;
   border-radius: 8px;
@@ -38,8 +38,11 @@ body {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  z-index: 99999; /* Inmune a colisiones fantasma */
+  
+  /* REPARADO: Prioridad de colisión absoluta al frente de la cabina */
+  z-index: 999999 !important; 
 }
+
 
 /* ===================================================
    3. BOTÓN SALIDA FLOTANTE Y CAPAS DE FILTRO CRT
@@ -72,9 +75,12 @@ body {
   height: 100vh;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
   background-size: 100% 4px, 6px 100%;
-  z-index: 10;
-  pointer-events: none;
+  
+  /* REPARADO: Hace que los clics del mouse pasen de largo e impacten los botones de abajo */
+  pointer-events: none; 
+  z-index: 10; 
 }
+
 
 /* ===================================================
    4. ESTRUCTURAS DE INTERFAZ DEL MENÚ INICIAL
@@ -156,3 +162,4 @@ body > p {
   font-family: monospace !important; font-size: 0.75rem !important; color: rgba(0, 255, 102, 0.3) !important;
   text-align: center !important; width: 100% !important; pointer-events: none !important; z-index: 1 !important;
 }
+
