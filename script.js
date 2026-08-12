@@ -208,3 +208,27 @@ function bucleFisicoEterno_Pong() {
     requestAnimationFrame(bucleFisicoEterno_Pong);
 }
 bucleFisicoEterno_Pong();
+
+// ===================================================
+// PARCHE DE ENLACE FORZADO POR EVENT LISTENERS NATIVOS
+// ===================================================
+document.addEventListener("DOMContentLoaded", () => {
+    const botonIA = document.getElementById("btn-play-ai");
+    const boton2P = document.getElementById("btn-play-2p");
+
+    if (botonIA) {
+        botonIA.addEventListener("click", (e) => {
+            e.preventDefault();
+            console.log("[ARCADE]: Lanzando Modo VS AI...");
+            inicializarModoLocal('ai');
+        });
+    }
+
+    if (boton2P) {
+        boton2P.addEventListener("click", (e) => {
+            e.preventDefault();
+            console.log("[ARCADE]: Lanzando Modo 2 Jugadores...");
+            inicializarModoLocal('2p');
+        });
+    }
+});
