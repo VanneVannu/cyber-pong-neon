@@ -209,26 +209,25 @@ function bucleFisicoEterno_Pong() {
 }
 bucleFisicoEterno_Pong();
 
-// ===================================================
-// PARCHE DE ENLACE FORZADO POR EVENT LISTENERS NATIVOS
-// ===================================================
+// ====================================================================
+// PARCHE INDESTRUCTIBLE: Vinculación Atómica de Clics del Menú Inicial
+// ====================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    const botonIA = document.getElementById("btn-play-ai");
-    const boton2P = document.getElementById("btn-play-2p");
+    // Capturamos los botones reales que acabamos de validar en tu HTML
+    const botonContraIA = document.getElementById("btn-play-ai");
+    const botonDosJugadores = document.getElementById("btn-play-2p");
 
-    if (botonIA) {
-        botonIA.addEventListener("click", (e) => {
+    if (botonContraIA) {
+        botonContraIA.onclick = function(e) {
             e.preventDefault();
-            console.log("[ARCADE]: Lanzando Modo VS AI...");
-            inicializarModoLocal('ai');
-        });
+            inicializarModoLocal('ai'); // Despierta el motor local en modo robot
+        };
     }
 
-    if (boton2P) {
-        boton2P.addEventListener("click", (e) => {
+    if (botonDosJugadores) {
+        botonDosJugadores.onclick = function(e) {
             e.preventDefault();
-            console.log("[ARCADE]: Lanzando Modo 2 Jugadores...");
-            inicializarModoLocal('2p');
-        });
+            inicializarModoLocal('2p'); // Despierta el motor local de 2 jugadores
+        };
     }
 });
