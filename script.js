@@ -25,28 +25,28 @@ const teclasPresionadas = {};
 // CAPTURA DE TECLADO MULTIBOTÓN SIMULTÁNEO
 // ===================================================
 window.addEventListener('keydown', e => {
-    teclasPresionadas[e.key.toLowerCase()] = true;
-    // Evitamos el scroll de la ventana al usar los controles
-    if ([" ", "arrowup", "arrowdown", "w", "s"].includes(e.key.toLowerCase())) {
+    const teclaLimpia = e.key ? e.key.toLowerCase() : "";
+    teclasPresionadas[teclaLimpia] = true;
+    if ([" ", "arrowup", "arrowdown", "w", "s"].includes(teclaLimpia)) {
         e.preventDefault();
     }
 });
-window.addEventListener('keyup', e => teclasPresionadas[e.key.toLowerCase()] = false);
+window.addEventListener('keyup', e => {
+    const teclaLimpia = e.key ? e.key.toLowerCase() : "";
+    teclasPresionadas[teclaLimpia] = false;
+});
 
 // ===================================================
-// INICIALIZADORES DEL JUEGO LOCAL GABINETE (REPARADO)
+// INICIALIZADORES DEL JUEGO LOCAL GABINETE
 // ===================================================
 function inicializarModoLocal(modoElegido) {
-    // Sincronizamos de forma exacta el modo con lo que envían tus botones en el HTML
     modoActual = modoElegido; // Guarda 'ai' o '2p'
     
-    // Capturamos los elementos del formulario neón
     aliasJugadorLocal = document.getElementById('input-alias').value.trim() || "PLAYER_1";
     dificultadIa = document.getElementById('select-diff').value;
 
     document.getElementById('label-p1').innerText = aliasJugadorLocal;
 
-    // Aplicamos los cambios estéticos de rango según el modo
     if (modoActual === 'ai') {
         document.getElementById('label-p2').innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
         document.getElementById('txt-guia-controles').innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
@@ -59,24 +59,21 @@ function inicializarModoLocal(modoElegido) {
     reiniciarMarcadoresArena();
 }
 
-
 // ===================================================
 // MOTOR FÍSICO RECURSIVO LOCAL (CORE LOOP)
 // ===================================================
 function actualizarFisicasLocales() {
     if (!p1 || !p2 || !bola) return;
 
-    // 1. CONTROL JUGADOR 1 (SIEMPRE CON 'W' / 'S')
+    // 1. Control Jugador 1 (W / S)
     if (teclasPresionadas['w']) p1.y = Math.max(5, p1.y - velocidadPaleta);
     if (teclasPresionadas['s']) p1.y = Math.min(canvas.height - paletaAlto - 5, p1.y + velocidadPaleta);
 
-    // 2. FILTRO DE CONTROL PALETA DERECHA (JUGADOR 2 o INTELIGENCIA ARTIFICIAL)
+    // 2. Filtro de control paleta derecha (Jugador 2 o IA)
     if (modoActual === '2p') {
-        // MODO DOS JUGADORES: Captura las flechas físicas ArrowUp y ArrowDown
         if (teclasPresionadas['arrowup']) p2.y = Math.max(5, p2.y - velocidadPaleta);
         if (teclasPresionadas['arrowdown']) p2.y = Math.min(canvas.height - paletaAlto - 5, p2.y + velocidadPaleta);
     } else {
-        // MODO INTELIGENCIA ARTIFICIAL: Persigue la bola de forma algorítmica calibrada
         let velocidadIa = dificultadIa === 'easy' ? 2.5 : dificultadIa === 'medium' ? 4.2 : 5.8;
         let centroPaletaIa = p2.y + paletaAlto / 2;
         if (bola.vx > 0) {
@@ -85,28 +82,25 @@ function actualizarFisicasLocales() {
         }
     }
 
-    // 3. FÍSICAS REBOTE BALÍSTICO DE LA BOLA
+    // 3. Físicas de rebote de la bola
     if (bola.enJuego) {
         bola.x += bola.vx;
         bola.y += bola.vy;
 
-        // Rebote con Techo y Piso
         if (bola.y - bola.radio <= 0 || bola.y + bola.radio >= canvas.height) {
             bola.vy *= -1;
             sonarTonoRetroMini(400, 0.04);
         }
 
-        // Rebote Paleta 1 (Izquierda)
         if (bola.vx < 0 && bola.x - bola.radio <= p1.x + paletaAncho && bola.x + bola.radio >= p1.x) {
             if (bola.y >= p1.y && bola.y <= p1.y + paletaAlto) {
-                bola.vx *= -1.05; // Aceleración orbital arcade
+                bola.vx *= -1.05;
                 let deltaY = bola.y - (p1.y + paletaAlto / 2);
                 bola.vy = deltaY * 0.22;
                 sonarTonoRetroMini(600, 0.05);
             }
         }
 
-        // Rebote Paleta 2 (Derecha)
         if (bola.vx > 0 && bola.x + bola.radio >= p2.x && bola.x - bola.radio <= p2.x + paletaAncho) {
             if (bola.y >= p2.y && bola.y <= p2.y + paletaAlto) {
                 bola.vx *= -1.05;
@@ -116,42 +110,41 @@ function actualizarFisicasLocales() {
             }
         }
 
-        // Detección de Anotación de Puntos
         if (bola.x < 0) { scoreP2++; saquearBolaAlCentro(1); }
         else if (bola.x > canvas.width) { scoreP1++; saquearBolaAlCentro(-1); }
     }
 }
 
+// ===================================================
+// MOTOR GRÁFICO (DIBUJAR)
+// ===================================================
 function dibujarArenaVectores() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Malla divisoria central
     ctx.strokeStyle = "rgba(0, 255, 102, 0.15)";
     ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
 
-    // Dibujamos las Paletas en Verde Neón Fósforo
     ctx.fillStyle = "#00ff66"; ctx.shadowBlur = 10; ctx.shadowColor = "#00ff66";
     ctx.fillRect(p1.x, p1.y, paletaAncho, paletaAlto);
     ctx.fillRect(p2.x, p2.y, paletaAncho, paletaAlto);
 
-    // Dibujamos la Bola en Ámbar brillante
     if (bola.enJuego) {
         ctx.fillStyle = "#ffcc00"; ctx.shadowColor = "#ffcc00";
         ctx.beginPath(); ctx.arc(bola.x, bola.y, bola.radio, 0, Math.PI*2); ctx.fill();
     }
-    ctx.shadowBlur = 0; // Apagamos sombras pesadas para estabilizar FPS
+    ctx.shadowBlur = 0;
 }
 
+// ===================================================
+// NÚCLEO DE ACCIONES Y REINICIOS RETRO
+// ===================================================
 function congelarOSaqueBola() {
     if (bola.enJuego) return;
-
-    // Dirección inicial aleatoria del saque
     let dirX = Math.random() > 0.5 ? 1 : -1;
     bola.vx = dirX * 3.8;
     bola.vy = (Math.random() - 0.5) * 3;
     bola.enJuego = true;
-
     sonarTonoRetroMini(800, 0.08);
 }
 
@@ -163,7 +156,7 @@ function saquearBolaAlCentro(direccion) {
     
     document.getElementById('score-p1').innerText = scoreP1;
     document.getElementById('score-p2').innerText = scoreP2;
-    sonarTonoRetroMini(250, 0.25); // Pitido grave de anotación
+    sonarTonoRetroMini(250, 0.25);
 }
 
 function reiniciarMarcadoresArena() {
@@ -207,36 +200,8 @@ function bucleFisicoEterno_Pong() {
     dibujarArenaVectores();
     requestAnimationFrame(bucleFisicoEterno_Pong);
 }
-bucleFisicoEterno_Pong();
 
-// ====================================================================
-// PARCHE INDESTRUCTIBLE: Vinculación Atómica de Clics del Menú Inicial
-// ====================================================================
-document.addEventListener("DOMContentLoaded", () => {
-    // Capturamos los botones reales que acabamos de validar en tu HTML
-    const botonContraIA = document.getElementById("btn-play-ai");
-    const botonDosJugadores = document.getElementById("btn-play-2p");
-
-    if (botonContraIA) {
-        botonContraIA.onclick = function(e) {
-            e.preventDefault();
-            inicializarModoLocal('ai'); // Despierta el motor local en modo robot
-        };
-    }
-
-    if (botonDosJugadores) {
-        botonDosJugadores.onclick = function(e) {
-            e.preventDefault();
-            inicializarModoLocal('2p'); // Despierta el motor local de 2 jugadores
-        };
-    }
-});
-
-// ====================================================================
-// NÚCLEO DE COMPATIBILIDAD ATÓMICA (BLINDAJE DE NOMBRES Y BOTONES)
-// ====================================================================
-
-// 1. Forzamos el enlace directo con los botones del menú inicial por código
+// AMARRE DE EVENTOS DE CLIC MAESTRO AL TERMINAR DE CARGAR EL DOM
 document.addEventListener("DOMContentLoaded", () => {
     const btnAI = document.getElementById("btn-play-ai");
     const btn2P = document.getElementById("btn-play-2p");
@@ -255,84 +220,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// 2. Creamos los puentes para los botones de la arena de juego
-// Si el HTML llama a un nombre y el script tiene otro, estas líneas redirigen el comando al instante
-if (typeof conmutarPantallasVisibles_Pong !== 'function') {
-    window.conmutarPantallasVisibles_Pong = function(entrarEnArena) {
-        const menu = document.getElementById('menu-inicio');
-        const escenario = document.getElementById('escenario-juego');
-        if (entrarEnArena) {
-            if (menu) menu.classList.add('oculto');
-            if (escenario) {
-                escenario.classList.remove('oculto');
-                escenario.style.display = 'flex'; // Fuerza la visibilidad de la arena
-            }
-        } else {
-            if (menu) menu.classList.remove('oculto');
-            if (escenario) escenario.classList.add('oculto');
-        }
-    };
-}
-
-if (typeof congelarOSaqueBola !== 'function') {
-    window.congelarOSaqueBola = function() {
-        if (typeof saquearBolaAlCentro === 'function' && !bola.enJuego) {
-            // Si tu script original usa saquearBolaAlCentro o similar para disparar
-            let dirX = Math.random() > 0.5 ? 1 : -1;
-            bola.vx = dirX * 3.8;
-            bola.vy = (Math.random() - 0.5) * 3;
-            bola.enJuego = true;
-            if (typeof sonarTonoRetroMini === 'function') sonarTonoRetroMini(800, 0.08);
-        }
-    };
-}
-
-if (typeof reiniciarMarcadoresArena !== 'function') {
-    window.reiniciarMarcadoresArena = function() {
-        scoreP1 = 0; scoreP2 = 0;
-        const s1 = document.getElementById('score-p1');
-        const s2 = document.getElementById('score-p2');
-        if (s1) s1.innerText = "0";
-        if (s2) s2.innerText = "0";
-        p1.y = 162; p2.y = 162;
-        bola.x = canvas.width / 2;
-        bola.y = canvas.height / 2;
-        bola.vx = 0; bola.vy = 0;
-        bola.enJuego = false;
-        if (typeof sonarTonoRetroMini === 'function') sonarTonoRetroMini(250, 0.25);
-    };
-}
-
-if (typeof regresarAlMenuInicial_Pong !== 'function') {
-    window.regresarAlMenuInicial_Pong = function() {
-        if (typeof conmutarPantallasVisibles_Pong === 'function') {
-            conmutarPantallasVisibles_Pong(false);
-        }
-    };
-}
-
-// 3. Completamos la lógica interna de inicializarModoLocal por si quedó a medias en el archivo
-const originalInicializarModoLocal = window.inicializarModoLocal;
-window.inicializarModoLocal = function(modoElegido) {
-    modoActual = modoElegido;
-    aliasJugadorLocal = document.getElementById('input-alias').value.trim() || "PLAYER_1";
-    dificultadIa = document.getElementById('select-diff').value;
-
-    const lblP1 = document.getElementById('label-p1');
-    const lblP2 = document.getElementById('label-p2');
-    const txtGuia = document.getElementById('txt-guia-controles');
-
-    if (lblP1) lblP1.innerText = aliasJugadorLocal;
-
-    if (modoActual === 'ai') {
-        if (lblP2) lblP2.innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
-        if (txtGuia) txtGuia.innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
-    } else {
-        if (lblP2) lblP2.innerText = "PLAYER_2 👥";
-        if (txtGuia) txtGuia.innerText = "P1: [W/S] MOVE UP/DOWN  ||  P2: [▲/▼] ARROW KEYS MOVE";
-    }
-    
-    if (typeof conmutarPantallasVisibles_Pong === 'function') conmutarPantallasVisibles_Pong(true);
-    if (typeof reiniciarMarcadoresArena === 'function') reiniciarMarcadoresArena();
-};
-
+// ENCENDIDO DEL MOTOR GRÁFICO ETERNO
+bucleFisicoEterno_Pong();
