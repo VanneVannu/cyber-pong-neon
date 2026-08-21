@@ -19,10 +19,9 @@ body {
 }
 
 /* ===================================================
-   2. CONTENEDOR ARCADE CENTRAL (POSICIONAMIENTO ABSOLUTO FORZADO)
+   2. CONTENEDOR ARCADE CENTRAL
    =================================================== */
 #contenedor-juego {
-  /* EL TRUCO HISTÓRICO: Clava el chasis al centro e impide que capas invisibles tapen el ratón */
   position: absolute;
   top: 50%;
   left: 50%;
@@ -41,7 +40,6 @@ body {
   justify-content: center;
   gap: 20px;
   
-  /* Capa frontal máxima prioritaria para clics directos del mouse */
   z-index: 99999; 
 }
 
@@ -81,82 +79,186 @@ body {
 }
 
 /* ===================================================
-   4. ESTRUCTURAS DE INTERFAZ DEL MENÚ INICIAL
+   4. CONTROL DE PANTALLAS Y MENÚ INICIAL
    =================================================== */
-.oculto { display: none !important; }
+/* REPARACIÓN CLAVE: .oculto con !important para garantizar el cambio de pantallas */
+.oculto { 
+  display: none !important; 
+}
 
 #menu-inicio {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; width: 100%; gap: 20px; text-align: center;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center;
+  justify-content: center; 
+  width: 100%; 
+  gap: 20px; 
+  text-align: center;
 }
+
 .titulo-neon {
-  font-size: 3.5rem; color: #ffcc00;
-  text-shadow: 0 0 10px #ffcc00, 0 0 20px rgba(0, 255, 102, 0.5); letter-spacing: 5px;
+  font-size: 3.5rem; 
+  color: #ffcc00;
+  text-shadow: 0 0 10px #ffcc00, 0 0 20px rgba(0, 255, 102, 0.5); 
+  letter-spacing: 5px;
 }
-.subtitulo { color: #00ff66; letter-spacing: 2px; margin-bottom: 20px; font-size: 0.9rem; }
+.subtitulo { 
+  color: #00ff66; 
+  letter-spacing: 2px; 
+  margin-bottom: 20px; 
+  font-size: 0.9rem; 
+}
 
 .seccion-alias, .selector-dificultad {
-  display: flex; flex-direction: column; gap: 5px; text-align: left; width: 320px; font-size: 0.9rem; color: #00ff66;
+  display: flex; 
+  flex-direction: column; 
+  gap: 5px; 
+  text-align: left; 
+  width: 320px; 
+  font-size: 0.9rem; 
+  color: #00ff66;
 }
 #input-alias, #select-diff {
-  background: #020803; border: 2px solid #ffcc00; color: #fff;
-  padding: 10px; font-family: inherit; font-weight: bold; border-radius: 4px; outline: none;
+  background: #020803; 
+  border: 2px solid #ffcc00; 
+  color: #fff;
+  padding: 10px; 
+  font-family: inherit; 
+  font-weight: bold; 
+  border-radius: 4px; 
+  outline: none;
 }
-#select-diff { border-color: #00ff66; color: #00ff66; cursor: pointer; }
-#select-diff option { background: #061208; }
+#select-diff { 
+  border-color: #00ff66; 
+  color: #00ff66; 
+  cursor: pointer; 
+}
+#select-diff option { 
+  background: #061208; 
+}
 
-.opciones-modo { display: flex; flex-direction: column; gap: 12px; width: 320px; margin-top: 10px; }
-.btn-modo {
-  background: #0a1f0f; border: 2px solid #00ff66; color: #00ff66;
-  padding: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; border-radius: 4px; transition: all 0.2s;
+.opciones-modo { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 12px; 
+  width: 320px; 
+  margin-top: 10px; 
 }
-.btn-modo:hover { background: #00ff66; color: #000; box-shadow: 0 0 15px #00ff66; }
+.btn-modo {
+  background: #0a1f0f; 
+  border: 2px solid #00ff66; 
+  color: #00ff66;
+  padding: 12px; 
+  font-size: 1rem; 
+  font-weight: bold; 
+  cursor: pointer; 
+  border-radius: 4px; 
+  transition: all 0.2s;
+}
+.btn-modo:hover { 
+  background: #00ff66; 
+  color: #000; 
+  box-shadow: 0 0 15px #00ff66; 
+}
 
 /* ===================================================
    5. ESCENARIO DE LA ARENA DE COMBATE REAL
    =================================================== */
-#escenario-juego { display: flex; flex-direction: column; width: 100%; }
-.cabecera-arena {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 15px; border-bottom: 1px dashed #00ff66; padding-bottom: 10px;
+#escenario-juego { 
+  display: flex; 
+  flex-direction: column; 
+  width: 100%; 
 }
-.nombre-marcador { font-size: 1.3rem; color: #ffcc00; font-weight: bold; width: 200px; }
+
+.cabecera-arena {
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  margin-bottom: 15px; 
+  border-bottom: 1px dashed #00ff66; 
+  padding-bottom: 10px;
+}
+.nombre-marcador { 
+  font-size: 1.3rem; 
+  color: #ffcc00; 
+  font-weight: bold; 
+  width: 200px; 
+}
 #label-p1 { text-align: left; }
 #label-p2 { text-align: right; }
 
-.marcador { font-size: 3rem; font-weight: bold; color: #fff; }
-.separador { color: #ffcc00; margin: 0 10px; }
-
-.controles-partida { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
-.controles-partida button {
-  background: #0a1f0f; border: 2px solid #00ff66; color: #00ff66;
-  padding: 8px 18px; font-family: inherit; font-weight: bold; cursor: pointer; border-radius: 4px;
+.marcador { 
+  font-size: 3rem; 
+  font-weight: bold; 
+  color: #fff; 
 }
-.controles-partida button:hover { background: #00ff66; color: #000; box-shadow: 0 0 10px #00ff66; }
+.separador { 
+  color: #ffcc00; 
+  margin: 0 10px; 
+}
+
+.controles-partida { 
+  display: flex; 
+  justify-content: center; 
+  gap: 15px; 
+  margin-bottom: 15px; 
+}
+.controles-partida button {
+  background: #0a1f0f; 
+  border: 2px solid #00ff66; 
+  color: #00ff66;
+  padding: 8px 18px; 
+  font-family: inherit; 
+  font-weight: bold; 
+  cursor: pointer; 
+  border-radius: 4px;
+}
+.controles-partida button:hover { 
+  background: #00ff66; 
+  color: #000; 
+  box-shadow: 0 0 10px #00ff66; 
+}
 #btn-start-match { border-color: #00ff66; color: #00ff66; }
 #btn-reset-match, #btn-main-menu { border-color: #ffcc00; color: #ffcc00; }
-#btn-reset-match:hover, #btn-main-menu:hover { background: #ffcc00; color: #000; box-shadow: 0 0 10px #ffcc00; }
-
-.cuerpo-arena { display: flex; justify-content: center; width: 100%; }
-
-/* ===================================================
-   6. LIENZO VIVIENTE (CANVAS)
-   =================================================== */
-#lienzo-pong {
-  background: #020502; border: 2px solid #14331a;
-  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.15); display: block;
+#btn-reset-match:hover, #btn-main-menu:hover { 
+  background: #ffcc00; 
+  color: #000; 
+  box-shadow: 0 0 10px #ffcc00; 
 }
 
-.controles-ayuda { margin-top: 15px; font-size: 0.85rem; color: #497a53; text-align: center; }
+.cuerpo-arena { 
+  display: flex; 
+  justify-content: center; 
+  width: 100%; 
+}
 
 /* ===================================================
-   7. INTERRUPTORES DE FLUJO Y TEXTO DE COPYRIGHT DE FONDO
+   6. LIENZO VIVIENTE (CANVAS) Y FOOTER
    =================================================== */
-#menu-inicio { display: flex !important; }
-#escenario-juego { display: none !important; }
+#lienzo-pong {
+  background: #020502; 
+  border: 2px solid #14331a;
+  box-shadow: inset 0 0 20px rgba(0, 255, 102, 0.15); 
+  display: block;
+}
+
+.controles-ayuda { 
+  margin-top: 15px; 
+  font-size: 0.85rem; 
+  color: #497a53; 
+  text-align: center; 
+}
 
 body > p {
-  position: absolute !important; bottom: 15px !important; left: 50% !important; transform: translateX(-50%) !important;
-  font-family: monospace !important; font-size: 0.75rem !important; color: rgba(0, 255, 102, 0.3) !important;
-  text-align: center !important; width: 100% !important; pointer-events: none !important; z-index: 1 !important;
+  position: absolute; 
+  bottom: 15px; 
+  left: 50%; 
+  transform: translateX(-50%);
+  font-family: monospace; 
+  font-size: 0.75rem; 
+  color: rgba(0, 255, 102, 0.3);
+  text-align: center; 
+  width: 100%; 
+  pointer-events: none; 
+  z-index: 1;
 }
