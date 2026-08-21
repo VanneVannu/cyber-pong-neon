@@ -39,9 +39,9 @@
       </div>
 
       <div class="opciones-modo">
-        <!-- REPARADO: Se agregan los IDs exactos para engranar con los escuchadores del script.js -->
-        <button class="btn-modo" id="btn-play-ai">🕹️ PLAY VS AI LOCAL</button>
-        <button class="btn-modo" id="btn-play-2p">👥 LOCAL 2 PLAYERS (SAME PC)</button>
+        <!-- Agregados los eventos onclick para arrancar la partida -->
+        <button class="btn-modo" id="btn-play-ai" onclick="inicializarModoLocal('ai')">🕹️ PLAY VS AI LOCAL</button>
+        <button class="btn-modo" id="btn-play-2p" onclick="inicializarModoLocal('2p')">👥 LOCAL 2 PLAYERS (SAME PC)</button>
       </div>
 
     </section>
