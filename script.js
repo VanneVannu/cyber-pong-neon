@@ -65,7 +65,7 @@ function inicializarModoLocal(modoElegido) {
 function actualizarFisicasLocales() {
     if (!p1 || !p2 || !bola) return;
 
-    // 1. Control Jugador 1 (W / S)
+    // 1. Control Jugador 1 (Teclas W / S)
     if (teclasPresionadas['w']) p1.y = Math.max(5, p1.y - velocidadPaleta);
     if (teclasPresionadas['s']) p1.y = Math.min(canvas.height - paletaAlto - 5, p1.y + velocidadPaleta);
 
@@ -200,25 +200,6 @@ function bucleFisicoEterno_Pong() {
     dibujarArenaVectores();
     requestAnimationFrame(bucleFisicoEterno_Pong);
 }
-
-// AMARRE DE EVENTOS DE CLIC MAESTRO AL TERMINAR DE CARGAR EL DOM
-document.addEventListener("DOMContentLoaded", () => {
-    const btnAI = document.getElementById("btn-play-ai");
-    const btn2P = document.getElementById("btn-play-2p");
-
-    if (btnAI) {
-        btnAI.onclick = function(e) {
-            e.preventDefault();
-            inicializarModoLocal('ai');
-        };
-    }
-    if (btn2P) {
-        btn2P.onclick = function(e) {
-            e.preventDefault();
-            inicializarModoLocal('2p');
-        };
-    }
-});
 
 // ENCENDIDO DEL MOTOR GRÁFICO ETERNO
 bucleFisicoEterno_Pong();
