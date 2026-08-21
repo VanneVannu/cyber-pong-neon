@@ -5,16 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stage 03 // Cyber Pong Neon</title>
   <link rel="stylesheet" href="style.css">
-  <!-- ÍCONO DE PESTAÑA DEFINITIVO (MÉTODO TRADICIONAL DEL AJEDREZ) -->
+   <!-- ÍCONO DE PESTAÑA DEFINITIVO (MÉTODO TRADICIONAL DEL AJEDREZ) -->
   <link rel="icon" type="image/png" href="favicon.png">
-
 </head>
 <body>
 
-  <!-- Botón de eyección para regresar a tu portafolio principal -->
-  <a href="https://synth-joy-station.onrender.com/" class="btn-regresar-arcade">🕹️ EXIT TO CABINET</a>
+  <!-- Botón imperativo para regresar al menú central de Synth Joy Station -->
+  <a href="https://onrender.com" class="btn-regresar-arcade">🕹️ EXIT TO CABINET</a>
 
-  <!-- Líneas de escaneo CRT -->
+  <!-- Líneas de escaneo CRT para la atmósfera de monitor retro -->
   <div class="efecto-crt-lineas"></div>
 
   <!-- CONTENEDOR ARCADE CENTRAL -->
@@ -39,12 +38,11 @@
         </select>
       </div>
 
-        <div class="opciones-modo">
-        <!-- REPARADO: Quitamos el onclick manual para evitar bloqueos de enlace -->
-        <button class="btn-modo" id="btn-play-ai">🕹️ PLAY VS AI LOCAL</button>
-        <button class="btn-modo" id="btn-play-2p">👥 LOCAL 2 PLAYERS (SAME PC)</button>
+      <div class="opciones-modo">
+        <!-- Vinculados de forma nativa a la función de doble control directo -->
+        <button class="btn-modo" onclick="inicializarModoLocal('ai')">🕹️ PLAY VS AI LOCAL</button>
+        <button class="btn-modo" onclick="inicializarModoLocal('2p')">👥 LOCAL 2 PLAYERS (SAME PC)</button>
       </div>
-
     </section>
 
     <!-- ESCENARIO DE LA ARENA DE COMBATE REAL -->
@@ -76,7 +74,6 @@
 
   <p>© 2026 Cyber Pong Neon. Todos los derechos reservados. Sistema Protegido bajo Licencia MIT.</p>
 
-  <script src="script.js?v=10.0"></script>
-
+  <script src="script.js"></script>
 </body>
 </html>
