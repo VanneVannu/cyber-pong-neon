@@ -37,27 +37,36 @@ window.addEventListener('keyup', e => {
 });
 
 // ===================================================
-// INICIALIZADORES DEL JUEGO LOCAL GABINETE
+// INICIALIZADORES DEL JUEGO LOCAL GABINETE (BLINDADO)
 // ===================================================
 function inicializarModoLocal(modoElegido) {
     modoActual = modoElegido; // Guarda 'ai' o '2p'
     
-    aliasJugadorLocal = document.getElementById('input-alias').value.trim() || "PLAYER_1";
-    dificultadIa = document.getElementById('select-diff').value;
+    // Capturamos de forma segura los elementos del formulario
+    const inputAlias = document.getElementById('input-alias');
+    const selectDiff = document.getElementById('select-diff');
+    const labelP1 = document.getElementById('label-p1');
+    const labelP2 = document.getElementById('label-p2');
+    const txtGuia = document.getElementById('txt-guia-controles'); // El letrero conflictivo
 
-    document.getElementById('label-p1').innerText = aliasJugadorLocal;
+    aliasJugadorLocal = inputAlias ? inputAlias.value.trim() : "PLAYER_1";
+    dificultadIa = selectDiff ? selectDiff.value : "medium";
 
+    if (labelP1) labelP1.innerText = aliasJugadorLocal;
+
+    // REPARADO: Candados lógicos para que el script no colapse si el HTML no tiene los IDs puestos
     if (modoActual === 'ai') {
-        document.getElementById('btn-play-ai').innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
-        document.getElementById('txt-guia-controles').innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
+        if (labelP2) labelP2.innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
+        if (txtGuia) txtGuia.innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
     } else {
-        document.getElementById('btn-play-2p').innerText = "PLAYER_2 👥";
-        document.getElementById('txt-guia-controles').innerText = "P1: [W/S] MOVE UP/DOWN  ||  P2: [▲/▼] ARROW KEYS MOVE";
+        if (labelP2) labelP2.innerText = "PLAYER_2 👥";
+        if (txtGuia) txtGuia.innerText = "P1: [W/S] MOVE UP/DOWN  ||  P2: [▲/▼] ARROW KEYS MOVE";
     }
     
     conmutarPantallasVisibles_Pong(true);
     reiniciarMarcadoresArena();
 }
+
 
 // ===================================================
 // MOTOR FÍSICO RECURSIVO LOCAL (CORE LOOP)
