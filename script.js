@@ -1,5 +1,5 @@
 // ===================================================
-// MOTOR FÍSICO OPTIMIZADO - CYBER PONG
+// MOTOR FÍSICO OPTIMIZADO - CYBER PONG (100% SINK CON HTML)
 // ===================================================
 const canvas = document.getElementById('lienzo-pong');
 const ctx = canvas ? canvas.getContext('2d') : null;
@@ -9,9 +9,9 @@ let scoreP2 = 0;
 let modoActual = 'ai'; 
 let dificultadIa = 'medium'; 
 let aliasJugadorLocal = "PLAYER_1";
-let loopId = null; // Control para evitar bucles duplicados
+let loopId = null;
 
-// Un solo AudioContext global para evitar colapso de memoria
+// AudioContext singleton para prevenir congelamiento de memoria
 let audioCtx = null;
 function obtenerAudioContext() {
     if (!audioCtx) {
@@ -24,10 +24,11 @@ function obtenerAudioContext() {
     return audioCtx;
 }
 
-// Paletas vectoriales
+// Dimensiones de Paletas
 const paletaAncho = 12;
 const paletaAlto = 75;
 
+// Objetos del juego calibrados para Canvas 600x400
 const p1 = { x: 20, y: 162 };
 const p2 = { x: 568, y: 162 };
 const bola = { x: 300, y: 200, radio: 6, vx: 0, vy: 0, enJuego: false };
@@ -35,14 +36,13 @@ const bola = { x: 300, y: 200, radio: 6, vx: 0, vy: 0, enJuego: false };
 const velocidadPaleta = 6;
 const teclasPresionadas = {};
 
-// Captura segura de teclado
+// Captura limpia de teclado
 window.addEventListener('keydown', e => {
     const teclaLimpia = e.key ? e.key.toLowerCase() : "";
     teclasPresionadas[teclaLimpia] = true;
     if ([" ", "arrowup", "arrowdown", "w", "s"].includes(teclaLimpia)) {
         e.preventDefault();
     }
-    // Saque al presionar espacio
     if (teclaLimpia === " " || teclaLimpia === "spacebar") {
         congelarOSaqueBola();
     }
@@ -53,6 +53,7 @@ window.addEventListener('keyup', e => {
     teclasPresionadas[teclaLimpia] = false;
 });
 
+// Inicializador llamado desde los botones del menú HTML
 function inicializarModoLocal(modoElegido) {
     modoActual = modoElegido;
     
@@ -62,17 +63,17 @@ function inicializarModoLocal(modoElegido) {
     const labelP2 = document.getElementById('label-p2');
     const txtGuia = document.getElementById('txt-guia-controles');
 
-    aliasJugadorLocal = inputAlias ? inputAlias.value.trim() : "PLAYER_1";
+    aliasJugadorLocal = (inputAlias && inputAlias.value.trim() !== "") ? inputAlias.value.trim() : "PLAYER_1";
     dificultadIa = selectDiff ? selectDiff.value : "medium";
 
     if (labelP1) labelP1.innerText = aliasJugadorLocal;
 
     if (modoActual === 'ai') {
         if (labelP2) labelP2.innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
-        if (txtGuia) txtGuia.innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN // [SPACE] SERVE";
+        if (txtGuia) txtGuia.innerText = "CONTROLS: [W/S] MOVE || [SPACE] SERVE BALL";
     } else {
         if (labelP2) labelP2.innerText = "PLAYER_2 👥";
-        if (txtGuia) txtGuia.innerText = "P1: [W/S] || P2: [▲/▼] || [SPACE] SERVE";
+        if (txtGuia) txtGuia.innerText = "P1: [W/S] MOVE || P2: [▲/▼] ARROWS || [SPACE] SERVE";
     }
     
     conmutarPantallasVisibles_Pong(true);
@@ -83,11 +84,11 @@ function inicializarModoLocal(modoElegido) {
 function actualizarFisicasLocales() {
     if (!p1 || !p2 || !bola || !canvas) return;
 
-    // 1. Control Jugador 1 (W / S)
+    // 1. Control P1 (W / S)
     if (teclasPresionadas['w']) p1.y = Math.max(5, p1.y - velocidadPaleta);
     if (teclasPresionadas['s']) p1.y = Math.min(canvas.height - paletaAlto - 5, p1.y + velocidadPaleta);
 
-    // 2. Control Jugador 2 o IA
+    // 2. Control P2 o IA
     if (modoActual === '2p') {
         if (teclasPresionadas['arrowup']) p2.y = Math.max(5, p2.y - velocidadPaleta);
         if (teclasPresionadas['arrowdown']) p2.y = Math.min(canvas.height - paletaAlto - 5, p2.y + velocidadPaleta);
@@ -100,22 +101,22 @@ function actualizarFisicasLocales() {
         }
     }
 
-    // 3. Rebotes y colisiones de la pelota
+    // 3. Físicas de la Bola
     if (bola.enJuego) {
         bola.x += bola.vx;
         bola.y += bola.vy;
 
-        // Muros superior e inferior
+        // Rebotar en bordes superior e inferior
         if (bola.y - bola.radio <= 0 || bola.y + bola.radio >= canvas.height) {
             bola.vy *= -1;
             sonarTonoRetroMini(400, 0.04);
         }
 
-        // Colisión Paleta P1 (Repocisionamiento para evitar loop de rebote)
+        // Colisión Paleta P1
         if (bola.vx < 0 && bola.x - bola.radio <= p1.x + paletaAncho && bola.x + bola.radio >= p1.x) {
             if (bola.y >= p1.y && bola.y <= p1.y + paletaAlto) {
-                bola.vx = Math.min(Math.abs(bola.vx) * 1.05, 14); // Límite de velocidad
-                bola.x = p1.x + paletaAncho + bola.radio; // Expulsa la bola de la paleta
+                bola.vx = Math.min(Math.abs(bola.vx) * 1.05, 14); // Límite de aceleración
+                bola.x = p1.x + paletaAncho + bola.radio; // Expulsa la bola fuera de la paleta
                 let deltaY = bola.y - (p1.y + paletaAlto / 2);
                 bola.vy = deltaY * 0.22;
                 sonarTonoRetroMini(600, 0.05);
@@ -126,14 +127,14 @@ function actualizarFisicasLocales() {
         if (bola.vx > 0 && bola.x + bola.radio >= p2.x && bola.x - bola.radio <= p2.x + paletaAncho) {
             if (bola.y >= p2.y && bola.y <= p2.y + paletaAlto) {
                 bola.vx = -Math.min(Math.abs(bola.vx) * 1.05, 14);
-                bola.x = p2.x - bola.radio;
+                bola.x = p2.x - bola.radio; // Expulsa la bola fuera de la paleta
                 let deltaY = bola.y - (p2.y + paletaAlto / 2);
                 bola.vy = deltaY * 0.22;
                 sonarTonoRetroMini(650, 0.05);
             }
         }
 
-        // Anotación de puntos
+        // Puntos
         if (bola.x < 0) { scoreP2++; saquearBolaAlCentro(1); }
         else if (bola.x > canvas.width) { scoreP1++; saquearBolaAlCentro(-1); }
     }
@@ -143,7 +144,7 @@ function dibujarArenaVectores() {
     if (!ctx || !canvas) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Línea central
+    // Línea divisoria central
     ctx.strokeStyle = "rgba(0, 255, 102, 0.15)";
     ctx.lineWidth = 2;
     ctx.beginPath(); 
@@ -151,11 +152,12 @@ function dibujarArenaVectores() {
     ctx.lineTo(canvas.width / 2, canvas.height); 
     ctx.stroke();
 
-    // Paletas sin exceso de shadowBlur para proteger los FPS
+    // Paletas Neón
     ctx.fillStyle = "#00ff66";
     ctx.fillRect(p1.x, p1.y, paletaAncho, paletaAlto);
     ctx.fillRect(p2.x, p2.y, paletaAncho, paletaAlto);
 
+    // Pelota
     if (bola.enJuego) {
         ctx.fillStyle = "#ffcc00";
         ctx.beginPath(); 
@@ -214,6 +216,11 @@ function conmutarPantallasVisibles_Pong(entrarEnArena) {
     }
 }
 
+function regresarAlMenuInicial_Pong() {
+    conmutarPantallasVisibles_Pong(false);
+    if (loopId) cancelAnimationFrame(loopId); // Pausa el loop en el menú
+}
+
 function sonarTonoRetroMini(f, d) {
     try {
         const ctxAudio = obtenerAudioContext();
@@ -233,7 +240,7 @@ function sonarTonoRetroMini(f, d) {
 }
 
 function iniciarBucleJuego() {
-    if (loopId) cancelAnimationFrame(loopId); // Cancela bucles previos
+    if (loopId) cancelAnimationFrame(loopId);
     
     function bucle() {
         actualizarFisicasLocales();
@@ -242,8 +249,3 @@ function iniciarBucleJuego() {
     }
     bucle();
 }
-
-// Iniciar bucle de forma limpia al cargar la página
-window.addEventListener('DOMContentLoaded', () => {
-    iniciarBucleJuego();
-});
