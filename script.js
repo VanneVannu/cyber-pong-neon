@@ -48,10 +48,10 @@ function inicializarModoLocal(modoElegido) {
     document.getElementById('label-p1').innerText = aliasJugadorLocal;
 
     if (modoActual === 'ai') {
-        document.getElementById('label-p2').innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
+        document.getElementById('btn-play-ai').innerText = `AI_BOT (${dificultadIa.toUpperCase()})`;
         document.getElementById('txt-guia-controles').innerText = "CONTROLS: [W] MOVE UP // [S] MOVE DOWN";
     } else {
-        document.getElementById('label-p2').innerText = "PLAYER_2 👥";
+        document.getElementById('btn-play-2p').innerText = "PLAYER_2 👥";
         document.getElementById('txt-guia-controles').innerText = "P1: [W/S] MOVE UP/DOWN  ||  P2: [▲/▼] ARROW KEYS MOVE";
     }
     
